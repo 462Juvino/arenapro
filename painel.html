@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Host - Arena PRO FINAL</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #111; color: white; font-family: 'Arial', sans-serif; display: flex; gap: 20px; height: 100vh; box-sizing: border-box; }
+        h1, h2 { margin-top: 0; color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
+        .panel-section { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 5px; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: #666; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input[type="number"], input[type="text"], textarea, select { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #555; background: #000; color: #fff; box-sizing: border-box; }
+        select { cursor: pointer; font-size: 15px; }
+        input[type="file"] { width: 100%; padding: 5px; background: #333; border: 1px dashed #777; border-radius: 5px; color: #ccc; margin-top: 5px; cursor: pointer; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #0f0; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; cursor: pointer; background: #333; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        button { padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; background: #0055ff; color: white; }
+        button:hover { background: #0077ff; }
+        .btn-salvar { background: #0f0; color: #000; width: 100%; margin-top: 10px; font-size: 16px; flex-shrink: 0; font-weight: 900; }
+        .btn-salvar:hover { background: #3f3; }
+        #player-list { flex: 1; padding-right: 5px; }
+        .player-item { background: #000; margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .player-info { display: flex; align-items: center; gap: 10px; }
+        .player-info img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .player-actions { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+
+        /* Cores dos Botões de Poderes */
+        .btn-p1 { background: #ccc; color: #000; padding: 5px 8px;} /* Básica */
+        .btn-p2 { background: #0f0; color: #000; padding: 5px 8px;} /* Veneno */
+        .btn-p3 { background: #0ff; color: #000; padding: 5px 8px;} /* Gelo */
+        .btn-p4 { background: #00aaff; color: #000; padding: 5px 8px;} /* Diamante */
+        .btn-p5 { background: #ff0; color: #000; padding: 5px 8px;} /* Choque */
+        .btn-p6 { background: #ff0055; color: #fff; padding: 5px 8px;} /* Sangue */
+        .btn-p7 { background: #f30; color: #fff; padding: 5px 8px;} /* Fogo */
+        .btn-p8 { background: #333; color: #fff; padding: 5px 8px;} /* Morte */
+        .btn-p9 { background: #b200ff; color: #fff; padding: 5px 8px;} /* Plasma */
+        .btn-p10 { background: #4b0082; color: #fff; padding: 5px 8px;} /* Void */
+        .btn-p11 { background: #000; color: #f30; border: 1px solid #f30; padding: 5px 8px;} /* Inferno */
+        .btn-p12 { background: #ffcc00; color: #000; font-weight: bold; padding: 5px 8px;} /* Anjo */
+
+        .auto-restart-box { background: #1a1a1a; padding: 15px; border-radius: 8px; border-left: 5px solid #00ffff; margin-bottom: 20px; }
+        .x1-box { background: #2a004d; padding: 15px; border-radius: 8px; border-left: 5px solid #b200ff; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="panel-section">
+        <h1>⚙️ Configurações Gerais</h1>
+
+        <details style="background: #16161a; border: 2px solid #00ffff; border-radius: 12px; padding: 15px; margin-bottom: 25px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,255,0.2);">
+            <summary style="color: #00ffff; font-weight: bold; font-size: 18px; outline: none; text-shadow: 0 0 5px #00ffff;">📖 GUIA CENTRAL & REGRAS V12 (Clique para Expandir)</summary>
+
+            <div style="margin-top: 15px; font-size: 13px; color: #ddd; cursor: default; line-height: 1.6; max-height: 450px; overflow-y: auto; padding-right: 10px;">
+
+                <h3 style="color:#00ffaa; margin-top:0; border-bottom: 1px solid #333; padding-bottom: 3px;">👶 ENTRADA LIVRE (TIER 0)</h3>
+                <p>Qualquer interação inicial faz o jogador entrar na arena de <b>Mão Limpa (Tier 0 - Sem Serra e Sem Aura)</b>. Ele fica livre na arena apenas acumulando engajamento até decidir evoluir!</p>
+
+                <h3 style="color:#ffd700; border-bottom: 1px solid #333; padding-bottom: 3px;">📊 EVOLUÇÃO VIA TAPS (SKINS / SUBNÍVEIS)</h3>
+                <p>Para evoluir, o jogador precisa destravar cada <b>Level (Skin)</b> da serra antes de passar para o próximo Tier! Se ele for Fã Clube 5+ ou 15+, ele ganha um atalho automático para o Lvl 2 ou 3!</p>
+                <div style="background:rgba(0,0,0,0.4); padding: 8px; border-radius: 5px; font-family:monospace; color:#ffd700; margin-bottom:10px; font-size: 11px;">
+                    • T1 (Básica): Lvl 1 (250Taps) ➔ Lvl 2 (300 Taps)<br>
+                    • T2 (Veneno): Lvl 1 (1000 Taps) ➔ Lvl 2 (1550 Taps) ➔ Lvl 3 (1600 Taps)<br>
+                    • T3 (Gelo): Lvl 1 (2000 Taps) ➔ Lvl 2 (2050 Taps)<br>
+                    • T4 (Diamante): Lvl 1 (3000 Taps) ➔ Lvl 2 (3050 Taps)<br>
+                    • T5 (Choque): Lvl 1 (5500Taps) ➔ Lvl 2 (5050 Taps)<br>
+                    • T6 (Sangue): Lvl 1 (7500 Taps) ➔ Lvl 2 (7050 Taps)<br>
+                    • T7 (Fogo): Lvl 1 (9000 Taps) ➔ Lvl 2 (9050 Taps)<br>
+                    • T8 (Morte): Lvl 1 (15000 Taps)<br>
+                    <span style="color:#ff3300;">• Tiers 9 a 12 (Plasma, Void, Inferno, Anjo): EXCLUSIVOS VIA MOEDAS!</span>
+                </div>
+
+                <h3 style="color:#00aaff; border-bottom: 1px solid #333; padding-bottom: 3px;">🎒 SISTEMA DE INVENTÁRIO (MARCHA)</h3>
+                <ul>
+                    <li><b>Comandos Livres:</b> Os jogadores digitam <span style="color:#0f0">/up</span> e <span style="color:#0f0">/low</span> para alternar livremente entre <b>todos os Tiers e Skins</b> que já destravam na arena!</li>
+                    <li>Ninguém pode equipar uma skin de nível superior (ex: Plasma Lvl 2) através do `/up` sem antes ter conquistado a meta de Taps ou o benefício do Fã-Clube para aquela skin específica.</li>
+                </ul>
+
+                <h3 style="color:#ff0055; border-bottom: 1px solid #333; padding-bottom: 3px;">🤝 SISTEMA DE TIMES E COMBATE</h3>
+                <ul>
+                    <li><b>Criar/Recrutar:</b> O Líder digita <span style="color:#0f0">@Nome entra</span> para recrutar e <span style="color:#ff3300">@Nome sai</span> para expulsar. Qualquer membro pode usar <span style="color:#ff3300">/sair</span>.</li>
+                    <li><b>Fogo Amigo e HP:</b> Fogo Amigo é ZERO. Cada jogador possui a sua barra de vida (HP) individual. A vida NÃO é mais compartilhada.</li>
+                    <li><b>Duelo X1:</b> Digitar apenas <span style="color:#0f0">@Nome</span> gasta 1🎫 e puxa o oponente para o Octógono 1v1 acelerado por 60s. O dano base dentro da jaula é multiplicado!</li>
+                </ul>
+
+                <h3 style="color:#b200ff; border-bottom: 1px solid #333; padding-bottom: 3px;">⚔️ TIRO CONCENTRADO (⚡) E ESCALONAMENTO</h3>
+                <ul>
+                    <li><b>Disparo Concentrado:</b> Digite <span style="color:#0ff">@Nome!Nível</span> para forçar um tiro forte (ex: @Joao!3). Tiers 1 a 4 cobram 1 ⚡/lvl. Tiers 5+ cobram o DOBRO de ⚡. Dá +30% de dano extra por nível!</li>
+                    <li><b>🛡️ Balanceamento de Nível:</b> O jogo possui uma <b>hierarquia rígida</b>. Atirar em alguém mais forte reduz o seu dano severamente (mínimo de 10%). Atirar em alguém mais fraco aumenta o seu dano base em +30% por nível de diferença.</li>
+                    <li><b>Limites de Dano (Mesmo Nível):</b> Uma Serra Básica tira no máximo 3% de HP por rajada. Uma Serra Angelical tira no máximo 48% por rajada. <b>Nenhum tiro comum arranca mais de 50% de HP no mesmo nível!</b></li>
+                </ul>
+
+                <h3 style="color:#ff3300; border-bottom: 1px solid #333; padding-bottom: 3px;">🌋 SUPREMAS, EFEITOS E BLOQUEIOS</h3>
+                <ul>
+                    <li><b>Efeitos Únicos:</b> A Serra Sangue (Tier 6) rouba 1% de HP por acerto. A Venenosa (Tier 2) dá dano contínuo por 15s. A Void (Tier 10) engole e puxa o inimigo para perto!</li>
+                    <li><b>Custos do /max:</b> Serra Inferno cobra 8 ⚡. Serra Angelical cobra 14 ⚡.</li>
+                    <li><b>🛡️ Bloqueio Supremo:</b> Se algum jogador estiver empunhando a <b>Coroa de Espinhos (Tier 12, Nível 2)</b>, NENHUM comando `/max` funciona na live inteira!</li>
+                    <li><b>⚖️ Dano do /max:</b> Dá Hitkill apenas em alvos com 4 ou mais Tiers abaixo. Contra alvos próximos ou superiores, aplica dano percentual (ex: O Julgamento Anjo arranca exatos 40% de HP da Serra Inferno).</li>
+                </ul>
+
+                <h3 style="color:#00aaff; border-bottom: 1px solid #333; padding-bottom: 3px;">🖼️ VISUAL, TRANSIÇÃO E CURA</h3>
+                <ul>
+                    <li><b>Bônus de Upgrade:</b> Toda vez que um jogador evolui de Tier, ele ganha <b>+5 Munições</b>, recupera <b>50% de HP</b> instantaneamente e sua foto de perfil fica <b>oculta por 5 segundos</b> em transição suave!</li>
+                    <li><b>Ocultação de Fotos:</b> A checkbox do Host permite remover o rosto de todos os avatares comuns da tela, focando a transmissão puramente no design das lâminas giratórias.</li>
+                </ul>
+
+            </div>
+        </details>
+
+        <div style="background: #111; padding: 15px; border-radius: 8px; border-left: 5px solid #00ffff; margin-bottom: 20px; border: 1px solid #333;">
+            <label style="color:#0ff; font-size: 16px;">🔗 Conectar API Direta (@ do TikTok):</label>
+            <input type="text" id="cfg-tiktok-user" placeholder="ex: mestre_da_arena" onchange="salvarConfiguracoes()" style="border: 1px solid #00ffff; font-size: 16px;">
+            <p style="font-size: 12px; color: #aaa; margin-top: 5px; margin-bottom: 0;">Se preenchido, o jogo usa a conexão nativa rápida e silencia o TikFinity.</p>
+        </div>
+
+        <fieldset style="border: 1px solid #b200ff; border-radius: 8px; padding: 15px; margin-bottom: 20px; background: #222;">
+            <legend style="color: #b200ff; font-weight: bold; padding: 0 5px;">🏆 Filtro do Top 5 (Ao Vivo)</legend>
+            <div style="display: flex; gap: 10px;">
+                <select id="filtro-ranking" onchange="localStorage.setItem('filtroRanking', this.value)" style="flex: 2; border: 1px solid #b200ff; background: #111; color: white;">
+                    <option value="diario">Diário (Apenas Hoje)</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="geral">Geral (Histórico Completo)</option>
+                </select>
+                <button onclick="if(confirm('Zerar o ranking que está selecionado agora?')) localStorage.setItem('cmdZerarRanking', document.getElementById('filtro-ranking').value + '_' + Date.now())" style="background: transparent; border: 1px solid #ff3300; color: #ff3300; flex: 1;">Zerar Atual</button>
+            </div>
+        </fieldset>
+
+        <div class="form-group" style="display: flex; gap: 15px;">
+            <div style="flex: 1;">
+                <label>Tempo Batalha (Seg)</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="cfg-tempo" value="300" onchange="salvarConfiguracoes()">
+                    <button onclick="aplicarTempo()" style="background: #FFD700; color: #000; flex-shrink: 0;">APLICAR</button>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <label>HP Máx/Inicial</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="cfg-vida-max" value="3000" onchange="salvarConfiguracoes()">
+                    <button onclick="aplicarVida()" style="background: #0f0; color: #000; flex-shrink: 0;">APLICAR</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="auto-restart-box">
+            <label class="checkbox-group" style="background: transparent; padding: 0; margin-bottom: 10px;">
+                <input type="checkbox" id="cfg-auto-restart" onchange="salvarConfiguracoes()">
+                🔄 Reiniciar Nova Batalha Automática
+            </label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Tempo no Pódio Final (Segundos)</label>
+                <input type="number" id="cfg-restart-time" value="10" onchange="salvarConfiguracoes()">
+            </div>
+        </div>
+
+        <h2 style="color: #b200ff; text-shadow: 0 0 10px #b200ff;">⚔️ MODO DUELO X1</h2>
+        <div class="x1-box">
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="color:#e6b3ff;">Tempo do X1 (Seg)</label>
+                    <input type="number" id="cfg-tempo-x1" value="60" onchange="salvarConfiguracoes()">
+                </div>
+                <div style="flex: 1;">
+                    <label style="color:#e6b3ff;">Vida (HP) do X1</label>
+                    <input type="number" id="cfg-vida-x1" value="200" onchange="salvarConfiguracoes()">
+                </div>
+            </div>
+
+            <div class="form-group" style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; border-left: 5px solid #b200ff; margin-bottom: 20px;">
+                <label style="color:#0f0; font-size: 16px;">🎁 Presente para Ticket X1</label>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px; margin-bottom: 15px;">
+                    <img id="x1-gift-icon" src="https://cdn-icons-png.flaticon.com/512/4213/4213958.png" style="width: 45px; height: 45px; border-radius: 8px; border: 2px solid #b200ff; background: #000; object-fit: contain; padding: 5px;">
+                    <input type="text" id="cfg-x1-gift" value="Heart Me" placeholder="Ex: Rosa" oninput="atualizarIconePresente(); salvarConfiguracoes()" style="border: 2px solid #b200ff; background: #222; flex: 1; height: 45px; font-weight: bold; font-size: 16px; margin-bottom: 0;">
+                </div>
+
+                <label style="color:#0ff; font-weight: bold;">⚡ Presente p/ CARREGAR PODER (Mirar c/ @)</label>
+                <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                    <input type="text" id="cfg-power-gift" value="Energia" oninput="salvarConfiguracoes()" style="border: 1px solid #0ff; background: #222; color: #fff; flex: 1; margin-bottom: 0;">
+                    <button onclick="darMunicaoManual()" style="background: #00ffff; color: #000; padding: 8px 15px;">⚡ DAR MUNIÇÃO</button>
+                </div>
+
+                <label style="color:#0f0; font-weight: bold;">💊 Presente p/ CURA (Remove Veneno/Gelo)</label>
+                <input type="text" id="cfg-cure-gift" value="Sorvete" oninput="salvarConfiguracoes()" style="border: 1px solid #0f0; background: #222; color: #fff;">
+
+                <label>🛡️ Presente Escudo (15s ou +Nível):</label>
+                <input type="text" id="gift-shield" placeholder="Ex: Rosa">
+
+            </div>
+
+            <div style="margin-top:15px; border-top: 1px dashed #b200ff; padding-top: 10px;">
+                <label style="color:#e6b3ff;">🛠️ Forçar Teste X1 (Simulador)</label>
+                <div style="display: flex; gap: 5px; margin-top:5px;">
+                    <input type="text" id="test-x1-p1" list="player-suggestions" placeholder="ID Desafiante">
+                    <input type="text" id="test-x1-p2" list="player-suggestions" placeholder="ID Oponente">
+                    <button onclick="testarX1Manual()" style="background: #b200ff; color: #fff;">INICIAR X1</button>
+                </div>
+                <datalist id="player-suggestions"></datalist>
+            </div>
+        </div>
+
+        <label class="checkbox-group">
+            <input type="checkbox" id="cfg-musica" checked onchange="salvarConfiguracoes()">
+            🎵 Música de Fundo Ativada
+        </label>
+
+        <div class="form-group" style="background: #333; padding: 10px; border-radius: 5px;">
+            <label>Volume da Música (<span id="vol-label">50</span>%)</label>
+            <input type="range" id="cfg-volume" min="0" max="100" value="50" oninput="mudarVolume()">
+        </div>
+
+        <div class="form-group" style="background: #333; padding: 10px; border-radius: 5px;">
+            <label>Volume Efeitos Lâminas (<span id="vol-sfx-label">80</span>%)</label>
+            <input type="range" id="cfg-volume-sfx" min="0" max="100" value="80" oninput="mudarVolumeSFX()">
+        </div>
+
+        <div class="form-group" style="background: #333; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ff3300;">
+            <label>Velocidade Global (<span id="speed-label">0.8</span>x)</label>
+            <input type="range" id="cfg-speed" min="10" max="200" value="80" oninput="mudarVelocidade()">
+        </div>
+
+        <h2>🖼️ Personalizar Visual</h2>
+
+        <label class="checkbox-group" style="border: 1px solid #0088ff; margin-bottom: 15px;">
+            <input type="checkbox" id="cfg-hide-avatars" onchange="salvarConfiguracoes()">
+            👻 Ocultar Fotos dos Jogadores (Mostrar apenas a Serra)
+        </label>
+
+
+        <div class="form-group" style="background: #333; padding: 10px; border-radius: 5px; border-left: 4px solid #00ffff; margin-bottom: 15px;">
+            <label>Nível de Efeitos Visuais (VFX) - <span id="vfx-label">100</span>%</label>
+            <p style="font-size: 11px; color:#aaa; margin: 0 0 10px 0;">Controla a quantidade de explosões/partículas para não travar a live.</p>
+            <input type="range" id="cfg-vfx-level" min="0" max="200" value="100" oninput="mudarVFX()">
+        </div>
+        <div class="form-group">
+            <label>Fundo da ARENA (Link URL ou Upload do PC)</label>
+            <input type="text" id="cfg-bg-arena" placeholder="Cole o link da imagem" onchange="salvarConfiguracoes()">
+            <input type="file" id="cfg-bg-file" accept="image/*" title="Escolha uma imagem do seu PC" onchange="carregarImagemLocal(event)">
+        </div>
+        <div class="form-group">
+            <label>Fundo do RANKING TOP 5 (Opcional)</label>
+            <input type="text" id="cfg-bg-ranking" placeholder="Cole o link da imagem" onchange="salvarConfiguracoes()">
+        </div>
+
+        <div class="form-group" style="background: #333; padding: 10px; border-radius: 5px;">
+            <label>Zoom do Fundo da Arena (<span id="bg-size-label">100</span>%)</label>
+            <input type="range" id="cfg-bg-size" min="10" max="300" value="100" oninput="mudarTamanhoFundo()">
+        </div>
+
+        <label class="checkbox-group" style="margin-top: 15px;">
+            <input type="checkbox" id="cfg-chat" checked onchange="salvarConfiguracoes()">
+            💬 Permitir Comandos no Chat (/gelo, /fogo...)
+        </label>
+
+        <hr style="border: 1px dashed #555; margin: 30px 0 20px 0;">
+
+        <h2 style="color: #0f0; text-shadow: 0 0 10px #0f0;">💎 CUSTO DAS SERRAS (MOEDAS)</h2>
+        <p style="font-size: 12px; color: #aaa; margin-top: -10px; margin-bottom: 15px;">
+            As serras são ativadas automaticamente pela quantidade de moedas acumuladas.
+        </p>
+
+        <div class="form-group"><label>⚙️ Básica (Tier 1)</label><input type="number" id="custo-p1" value="1" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>☣️ Venenosa (Tier 2)</label><input type="number" id="custo-p2" value="5" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>❄️ Gelo (Tier 3)</label><input type="number" id="custo-p3" value="10" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>💎 Diamante (Tier 4)</label><input type="number" id="custo-p4" value="50" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>⚡ Choque (Tier 5)</label><input type="number" id="custo-p5" value="100" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>🩸 Sangue (Tier 6)</label><input type="number" id="custo-p6" value="250" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>🔥 Fogo (Tier 7)</label><input type="number" id="custo-p7" value="500" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>💀 Morte (Tier 8)</label><input type="number" id="custo-p8" value="1000" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>🌀 Plasma (Tier 9)</label><input type="number" id="custo-p9" value="2500" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>🌑 Void (Tier 10)</label><input type="number" id="custo-p10" value="5000" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label>🌋 Inferno (Tier 11)</label><input type="number" id="custo-p11" value="7500" onchange="salvarConfiguracoes()"></div>
+        <div class="form-group"><label style="color:#ffcc00;">👼 Angelical (Tier 12)</label><input type="number" id="custo-p12" value="10000" onchange="salvarConfiguracoes()" style="border:1px solid #ffcc00;"></div>
+
+        <hr style="border: 1px dashed #555; margin: 30px 0 20px 0;">
+
+        <button class="btn-salvar" onclick="salvarConfiguracoes()">SALVAR TUDO</button>
+    </div>
+
+    <div class="panel-section">
+        <h1>🕹️ Jogadores Ativos</h1>
+
+        <button id="btnToggleRules" onclick="toggleRules()"></button>
+        <button onclick="dispararStatusTela()" style="background: #FFD700; color: #000; font-weight: bold; padding: 12px; border-radius: 8px; border: none; cursor: pointer; width: 100%; margin-top: 10px;">
+            📊 EXIBIR STATUS TICKETS (5s)
+        </button>
+
+        <div style="background: #330000; border: 2px solid red; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+            <h3 style="color: #ff3333; margin-top: 0; font-size: 14px;">🚨 RADAR DE PRESENTES (AO VIVO)</h3>
+            <p id="log-presentes" style="color: yellow; font-family: monospace; font-size: 14px; margin: 0; font-weight: bold;">Mande um presente para testar...</p>
+        </div>
+
+        <div id="player-list">
+            <p style="color: #888; text-align: center;">Aguardando jogadores...</p>
+        </div>
+    </div>
+
+    <script>
+        // 🚨 SISTEMA DE LIMPEZA DE VERSÃO (Sem apagar a licença física do PC)
+        if (localStorage.getItem('versao_arena') !== 'V11.5') {
+            localStorage.clear();
+            localStorage.setItem('versao_arena', 'V11.5');
+            console.log("Limpeza de versão antiga concluída.");
+        }
+
+        const IMG_PADRAO_ARENA = "https://static.vecteezy.com/ti/vetor-gratis/p1/16265405-jogo-arena-de-batalha-no-inferno-com-lava-gratis-vetor.jpg";
+
+        const GIFT_IMAGES = {
+            "rosa": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/eba9366e855cb24dc254afb55f190694~tplv-obj.png",
+            "fogo": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/99f1fae13e8b7d99fc881ccda6a59b58~tplv-obj.png",
+            "sorvete": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/3fcf93ff18c8646b14d2410a72fb2349~tplv-obj.png",
+            "milho": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/8e4dfbf3e8be89a74659b85ea56b7c02~tplv-obj.png",
+            "tiktok": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/88bb6246bead242db7aeb820ed8c47ff~tplv-obj.png",
+            "peso": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/4baef206faaf0d8fc3bcde9db6db0e18~tplv-obj.png",
+            "heart me": "https://p19-webcast.tiktokcdn.com/img/maliva/webcast-va/d56945782445b0b8c8658ed44f894c7b~tplv-obj.png"
+        };
+
+        function atualizarIconePresente() {
+            let el = document.getElementById('cfg-x1-gift');
+            let iconEl = document.getElementById('x1-gift-icon');
+            if(!el || !iconEl) return;
+            let selectedLimpo = (el.value || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+            iconEl.src = GIFT_IMAGES[selectedLimpo] || "https://cdn-icons-png.flaticon.com/512/4213/4213958.png";
+        }
+
+        function aplicarTempo() { const novoTempo = parseInt(document.getElementById('cfg-tempo').value) || 120; localStorage.setItem('atualizarTempo', JSON.stringify({ tempo: novoTempo, ts: Date.now() })); salvarConfiguracoes(); }
+        function aplicarVida() { const novaVida = parseInt(document.getElementById('cfg-vida-max').value) || 100; localStorage.setItem('atualizarVida', JSON.stringify({ vida: novaVida, ts: Date.now() })); salvarConfiguracoes(); }
+        function testarX1Manual() { let p1 = document.getElementById('test-x1-p1').value.trim().replace('@',''); let p2 = document.getElementById('test-x1-p2').value.trim().replace('@',''); if(!p1 || !p2) return alert("Digite o ID dos dois lutadores!"); localStorage.setItem('forceX1Event', JSON.stringify({ p1: p1, p2: p2, ts: Date.now() })); }
+        function chamarX1(playerId) { let op = prompt(`Digite o ID do oponente para lutar na jaula X1 contra ${playerId}:`); if(op) { localStorage.setItem('forceX1Event', JSON.stringify({ p1: playerId, p2: op.trim().replace('@',''), ts: Date.now() })); } }
+        function mudarVolume() { let vol = document.getElementById('cfg-volume').value; document.getElementById('vol-label').innerText = vol; salvarConfiguracoes(); }
+        function mudarVolumeSFX() { let volSFX = document.getElementById('cfg-volume-sfx').value; document.getElementById('vol-sfx-label').innerText = volSFX; salvarConfiguracoes(); }
+        function mudarVelocidade() { let speed = (parseInt(document.getElementById('cfg-speed').value) / 100).toFixed(1); document.getElementById('speed-label').innerText = speed; salvarConfiguracoes(); }
+        function mudarTamanhoFundo() { let size = document.getElementById('cfg-bg-size').value; document.getElementById('bg-size-label').innerText = size; salvarConfiguracoes(); }
+        function mudarVFX() { let vfx = document.getElementById('cfg-vfx-level').value; document.getElementById('vfx-label').innerText = vfx; salvarConfiguracoes(); }
+
+        function carregarImagemLocal(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas'); const MAX_WIDTH = 1920; const MAX_HEIGHT = 1080;
+                        let width = img.width; let height = img.height;
+                        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
+                        else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                        document.getElementById('cfg-bg-arena').value = canvas.toDataURL('image/jpeg', 0.8); salvarConfiguracoes();
+                    }
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function salvarConfiguracoes() {
+            try {
+                let arenaBgStr = document.getElementById('cfg-bg-arena').value.trim() || IMG_PADRAO_ARENA;
+                let bgRankingStr = document.getElementById('cfg-bg-ranking').value.trim() || "";
+
+                // 🛡️ LÊ OS PRESENTES EXATAMENTE DOS CAMPOS CORRETOS
+                let x1Gift = document.getElementById('cfg-x1-gift').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+                let pwrGift = document.getElementById('cfg-power-gift').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+                let cureGift = document.getElementById('cfg-cure-gift').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+                let shieldGift = document.getElementById('gift-shield').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+
+                const config = {
+                    tiktok_user: document.getElementById('cfg-tiktok-user').value.trim(),
+                    tempo: parseInt(document.getElementById('cfg-tempo').value) || 300,
+                    vidaMax: parseInt(document.getElementById('cfg-vida-max').value) || 3000,
+                    tempoX1: parseInt(document.getElementById('cfg-tempo-x1').value) || 60,
+                    vidaX1: parseInt(document.getElementById('cfg-vida-x1').value) || 200,
+                    vfxLevel: parseInt(document.getElementById('cfg-vfx-level').value) || 100,
+                    ocultarAvatares: document.getElementById('cfg-hide-avatars').checked,
+                    musica: document.getElementById('cfg-musica').checked,
+                    volume: parseInt(document.getElementById('cfg-volume').value) / 100,
+                    volSFX: parseInt(document.getElementById('cfg-volume-sfx').value) / 100,
+                    velocidade: parseInt(document.getElementById('cfg-speed').value) / 100,
+                    bgArena: arenaBgStr,
+                    bgRanking: bgRankingStr,
+                    bgSize: parseInt(document.getElementById('cfg-bg-size').value) || 100,
+                    chatAtivo: document.getElementById('cfg-chat').checked,
+                    autoRestart: document.getElementById('cfg-auto-restart').checked,
+                    restartTime: parseInt(document.getElementById('cfg-restart-time').value) || 10,
+                    custos: { p1: parseInt(document.getElementById('custo-p1').value)||1, p2: parseInt(document.getElementById('custo-p2').value)||5, p3: parseInt(document.getElementById('custo-p3').value)||10, p4: parseInt(document.getElementById('custo-p4').value)||50, p5: parseInt(document.getElementById('custo-p5').value)||100, p6: parseInt(document.getElementById('custo-p6').value)||250, p7: parseInt(document.getElementById('custo-p7').value)||500, p8: parseInt(document.getElementById('custo-p8').value)||1000, p9: parseInt(document.getElementById('custo-p9').value)||2500, p10: parseInt(document.getElementById('custo-p10').value)||5000, p11: parseInt(document.getElementById('custo-p11').value)||7500, p12: parseInt(document.getElementById('custo-p12').value)||10000 },
+
+                    // 🛒 MAPA DE PRESENTES PERFEITAMENTE CONFIGURADO
+                    mapaPresentes: {
+                        x1: x1Gift ? [x1Gift] : [],
+                        power: pwrGift ? [pwrGift] : [],
+                        cure: cureGift ? [cureGift] : [],
+                        shield: shieldGift ? [shieldGift] : []
+                    },
+                    ts: Date.now()
+                };
+
+                localStorage.setItem('hostConfig', JSON.stringify(config));
+
+            // Só tenta salvar no Python SE a função existir lá, evitando o crash!
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config) { window.pywebview.api.save_config(config); }
+
+            let btn = document.querySelector('.btn-salvar');
+                if (btn) { btn.innerText = "✅ SALVO COM SUCESSO!"; btn.style.background = "#fff"; setTimeout(() => { btn.innerText = "SALVAR TUDO"; btn.style.background = "#0f0"; }, 2000); }
+            } catch (err) { console.error(err); }
+        }
+
+        function aplicarConfiguracoesNaTela(cfg) {
+
+            if (cfg.tiktok_user !== undefined) document.getElementById('cfg-tiktok-user').value = cfg.tiktok_user;
+            if (cfg.vfxLevel !== undefined) { document.getElementById('cfg-vfx-level').value = cfg.vfxLevel; document.getElementById('vfx-label').innerText = cfg.vfxLevel; }
+            if (cfg.tempo) document.getElementById('cfg-tempo').value = cfg.tempo;
+            if (cfg.vidaMax) document.getElementById('cfg-vida-max').value = cfg.vidaMax;
+            if (cfg.tempoX1) document.getElementById('cfg-tempo-x1').value = cfg.tempoX1;
+            if (cfg.vidaX1) document.getElementById('cfg-vida-x1').value = cfg.vidaX1;
+            if (cfg.ocultarAvatares !== undefined) document.getElementById('cfg-hide-avatars').checked = cfg.ocultarAvatares;
+            if (cfg.musica !== undefined) document.getElementById('cfg-musica').checked = cfg.musica;
+            if (cfg.chatAtivo !== undefined) document.getElementById('cfg-chat').checked = cfg.chatAtivo;
+            if (cfg.autoRestart !== undefined) document.getElementById('cfg-auto-restart').checked = cfg.autoRestart;
+            if (cfg.restartTime !== undefined) document.getElementById('cfg-restart-time').value = cfg.restartTime;
+            if (cfg.volume !== undefined) { document.getElementById('cfg-volume').value = Math.round(cfg.volume * 100); document.getElementById('vol-label').innerText = Math.round(cfg.volume * 100); }
+            if (cfg.volSFX !== undefined) { document.getElementById('cfg-volume-sfx').value = Math.round(cfg.volSFX * 100); document.getElementById('vol-sfx-label').innerText = Math.round(cfg.volSFX * 100); }
+            if (cfg.velocidade !== undefined) { document.getElementById('cfg-speed').value = Math.round(cfg.velocidade * 100); document.getElementById('speed-label').innerText = cfg.velocidade.toFixed(1); }
+
+            document.getElementById('cfg-bg-arena').value = cfg.bgArena || IMG_PADRAO_ARENA;
+            if (cfg.bgRanking !== undefined) document.getElementById('cfg-bg-ranking').value = cfg.bgRanking;
+            if (cfg.bgSize !== undefined) { document.getElementById('cfg-bg-size').value = cfg.bgSize; document.getElementById('bg-size-label').innerText = cfg.bgSize; }
+
+            if (cfg.custos) {
+                for(let i=1; i<=12; i++) { if(cfg.custos[`p${i}`]) document.getElementById(`custo-p${i}`).value = cfg.custos[`p${i}`]; }
+            }
+            if (cfg.mapaPresentes) {
+                if(cfg.mapaPresentes.x1 && cfg.mapaPresentes.x1[0]) document.getElementById('cfg-x1-gift').value = cfg.mapaPresentes.x1[0];
+                if(cfg.mapaPresentes.power && cfg.mapaPresentes.power[0]) document.getElementById('cfg-power-gift').value = cfg.mapaPresentes.power[0];
+                if(cfg.mapaPresentes.cure && cfg.mapaPresentes.cure[0]) document.getElementById('cfg-cure-gift').value = cfg.mapaPresentes.cure[0];
+
+                // 🛡️ NOVO: Puxa o escudo da memória também!
+                if(cfg.mapaPresentes.shield && cfg.mapaPresentes.shield[0]) document.getElementById('gift-shield').value = cfg.mapaPresentes.shield[0];
+            }
+            atualizarIconePresente();
+        }
+
+        function puxarMemoriaDoNavegador() {
+            let cfgStr = localStorage.getItem('hostConfig');
+            if (cfgStr) {
+                let cfg = JSON.parse(cfgStr);
+                aplicarConfiguracoesNaTela(cfg);
+            } else {
+                document.getElementById('cfg-bg-arena').value = IMG_PADRAO_ARENA;
+                atualizarIconePresente();
+            }
+        }
+        // Substitua a chamada antiga
+        puxarMemoriaDoNavegador();
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'activePlayers' && e.newValue) {
+                const players = JSON.parse(e.newValue);
+                const lista = document.getElementById('player-list');
+                const suggestions = document.getElementById('player-suggestions');
+                const balances = JSON.parse(localStorage.getItem('x1_balances') || '{}');
+                const powers = JSON.parse(localStorage.getItem('charged_powers') || '{}'); // <--- Puxa os poderes
+
+                if(suggestions) { suggestions.innerHTML = players.map(p => `<option value="${p.id}">`).join(''); }
+                if (players.length === 0) { lista.innerHTML = '<p style="color: #888; text-align: center;">Nenhum jogador.</p>'; return; }
+
+                lista.innerHTML = players.map(p => {
+                    // 🛡️ Remove aspas duplas e simples do nome para não quebrar o HTML dos botões
+                    let safeId = p.id.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    return `
+                    <div class="player-item">
+                        <div class="player-info">
+                            <img src="${p.pic ? 'https://wsrv.nl/?url=' + encodeURIComponent(p.pic) + '&w=50&h=50&fit=cover' : ''}" onerror="this.style.display='none'">
+                            <strong>${p.id}</strong>
+                            <span style="color:#b200ff; font-weight:bold; margin-left:10px; font-size:16px;" title="Tickets X1">🎫 ${balances[p.id] || 0}</span>
+                            <span style="color:#0ff; font-weight:bold; margin-left:10px; font-size:16px;" title="Munição de Poder">⚡ ${powers[p.id] || 0}</span>
+                        </div>
+                        <div class="player-actions">
+                            <button class="btn-x1" onclick="chamarX1('${safeId}')">⚔️</button>
+                            <button class="btn-vida" title="Vida Max" onclick="darPoder('${safeId}', 'vida')">❤️</button>
+                            <button class="btn-p1" title="Básica (T1)" onclick="darPoder('${safeId}', 1)">⚙️</button>
+                            <button class="btn-p2" title="Veneno (T2)" onclick="darPoder('${safeId}', 2)">☣️</button>
+                            <button class="btn-p3" title="Gelo (T3)" onclick="darPoder('${safeId}', 3)">❄️</button>
+                            <button class="btn-p4" title="Diamante (T4)" onclick="darPoder('${safeId}', 4)">💎</button>
+                            <button class="btn-p5" title="Choque (T5)" onclick="darPoder('${safeId}', 5)">⚡</button>
+                            <button class="btn-p6" title="Sangue (T6)" onclick="darPoder('${safeId}', 6)">🩸</button>
+                            <button class="btn-p7" title="Fogo (T7)" onclick="darPoder('${safeId}', 7)">🔥</button>
+                            <button class="btn-p8" title="Morte (T8)" onclick="darPoder('${safeId}', 8)">💀</button>
+                            <button class="btn-p9" title="Plasma (T9)" onclick="darPoder('${safeId}', 9)">🌀</button>
+                            <button class="btn-p10" title="Void (T10)" onclick="darPoder('${safeId}', 10)">🌑</button>
+                            <button class="btn-p11" title="Inferno (T11)" onclick="darPoder('${safeId}', 11)">🌋</button>
+                            <button class="btn-p12" title="Angelical (T12)" onclick="darPoder('${safeId}', 12)">👼</button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
+        });
+
+        let ultimoJogadorModificado = null;
+
+        function darPoder(playerId, powerLevel) {
+            ultimoJogadorModificado = playerId; // Salva quem foi o último a receber poder
+            localStorage.setItem('manualPower', JSON.stringify({ id: playerId, poder: powerLevel, ts: Date.now() }));
+        }
+
+        function darMunicaoManual() {
+            if (!ultimoJogadorModificado) {
+                alert("⚠️ Primeiro, dê uma serra (⚙️, ☣️, ❄️...) para algum jogador na lista abaixo clicando nos botões!");
+                return;
+            }
+            localStorage.setItem('cmdGivePower', JSON.stringify({ id: ultimoJogadorModificado, ts: Date.now() }));
+        }
+        setInterval(() => { let log = localStorage.getItem('lastGiftLog'); if (log) { document.getElementById('log-presentes').innerText = log; } }, 500);
+
+
+
+        // Coloque este mini-script junto aos outros scripts no final do painel.html
+            let isRulesOn = localStorage.getItem('showRulesArena') === 'true';
+            atualizarBotaoRegras();
+
+            function toggleRules() {
+                isRulesOn = !isRulesOn;
+                localStorage.setItem('showRulesArena', isRulesOn);
+                atualizarBotaoRegras();
+            }
+
+            function atualizarBotaoRegras() {
+                let btn = document.getElementById('btnToggleRules');
+                if(!btn) return;
+                btn.innerText = isRulesOn ? "📖 OCULTAR REGRAS DA TELA" : "📖 EXIBIR REGRAS NA TELA";
+                btn.style.background = isRulesOn ? "#ff3300" : "#0088ff";
+            }
+
+        function dispararStatusTela() {
+            localStorage.setItem('cmdShowStatus', Date.now().toString());
+        }
+    </script>
+</body>
+</html>

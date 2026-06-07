@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="no-referrer">
+    <title>Ranking Top 5 - Arena V10</title>
+    <style>
+        body { margin: 0; padding: 20px; overflow: hidden; background: black; font-family: 'Arial Black', sans-serif; color: black ; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; transition: background 0.3s ease; }
+        .ranking-box { width: 250px; background: rgba(0, 0, 0, 0.85); padding: 20px; border-radius: 20px; backdrop-filter: blur(10px); }
+        .box-score { border: 3px solid #FFD700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+        .box-kill { border: 3px solid #ff3300; box-shadow: 0 0 20px rgba(255, 51, 0, 0.4); }
+        .box-x1 { border: 3px solid #b200ff; box-shadow: 0 0 20px rgba(178, 0, 255, 0.4); }
+        .header { font-size: 20px; text-align: center; margin-bottom: 20px; padding-bottom: 10px; }
+        .header-score { color: #FFD700; text-shadow: 0 0 10px #FFD700; border-bottom: 2px solid rgba(255, 215, 0, 0.3); }
+        .header-kill { color: #ff3300; text-shadow: 0 0 10px #ff3300; border-bottom: 2px solid rgba(255, 51, 0, 0.3); }
+        .header-x1 { color: #b200ff; text-shadow: 0 0 10px #b200ff; border-bottom: 2px solid rgba(178, 0, 255, 0.3); }
+        .rank-list { display: flex; flex-direction: column; gap: 15px; }
+        .rank-item { display: flex; align-items: center; gap: 15px; animation: slideIn 0.5s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .rank-pos { font-size: 20px; font-weight: bold; width: 30px; }
+        .pos-score { color: #FFD700; } .pos-kill { color: #ff3300; } .pos-x1 { color: #b200ff; }
+        .rank-img { width: 55px; height: 55px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; background: #222; }
+        .rank-info { display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; }
+        .rank-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eee; }
+        .val-score { font-size: 20px; color: #0f0; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
+        .val-kill { font-size: 20px; color: #ff3300; font-weight: bold; text-shadow: 0 0 8px rgba(255, 51, 0, 0.5); }
+        .val-x1 { font-size: 20px; color: #b200ff; font-weight: bold; text-shadow: 0 0 8px rgba(178, 0, 255, 0.5); }
+    </style>
+</head>
+<body>
+
+    <div class="ranking-box box-score">
+        <div class="header header-score">🏆 PONTOS (HOJE)</div>
+        <div id="rank-list-score" class="rank-list"></div>
+    </div>
+    <div class="ranking-box box-kill">
+        <div class="header header-kill">💀 KILLS (HOJE)</div>
+        <div id="rank-list-kill" class="rank-list"></div>
+    </div>
+    <div class="ranking-box box-x1">
+        <div class="header header-x1">⚔️ X1 (HOJE)</div>
+        <div id="rank-list-x1" class="rank-list"></div>
+    </div>
+
+    <script>
+        let masterRanking = { diario: {id:'', players:{}}, semanal: {id:'', players:{}}, mensal: {id:'', players:{}}, geral: {id:'geral', players:{}} };
+        let filtroAtual = localStorage.getItem('filtroRanking') || 'diario';
+        let custosPoderes = { p1: 1, p2: 5, p3: 10, p4: 50, p5: 100, p6: 500, p7: 1000, p8: 5000 };
+
+        function getBuckets() {
+            const d = new Date(); const dia = d.toISOString().split('T')[0]; const mes = dia.substring(0, 7);
+            const d0 = new Date(d.getFullYear(), 0, 1);
+            const week = d.getFullYear() + '-W' + Math.ceil((((d - d0) / 86400000) + d0.getDay() + 1) / 7);
+            return { diario: dia, semanal: week, mensal: mes, geral: 'geral' };
+        }
+
+        function loadFromPython() {
+            if (window.pywebview && window.pywebview.api) {
+                window.pywebview.api.load_ranking().then(res => { if (res) { masterRanking = res; updateDisplay(); } });
+            } else setTimeout(loadFromPython, 500);
+        }
+        loadFromPython();
+
+        function saveToPython() { if (window.pywebview && window.pywebview.api) window.pywebview.api.save_ranking(masterRanking); }
+
+        function checkResets() {
+            const b = getBuckets(); let changed = false;
+            for (let k in b) { if (!masterRanking[k] || masterRanking[k].id !== b[k]) { masterRanking[k] = { id: b[k], players: {} }; changed = true; } }
+            if(changed) saveToPython();
+        }
+
+        function addStat(nick, pic, points, kills, x1) {
+            if(!nick) return; checkResets();
+            ['diario', 'semanal', 'mensal', 'geral'].forEach(k => {
+                let p = masterRanking[k].players[nick];
+                if (!p) p = masterRanking[k].players[nick] = { id: nick, score: 0, kills: 0, x1Wins: 0, pPic: pic };
+                if (pic && !p.pPic) p.pPic = pic;
+                p.score += points; p.kills += kills; p.x1Wins += x1;
+            });
+            saveToPython(); updateDisplay();
+        }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'filtroRanking' && e.newValue) { filtroAtual = e.newValue; updateDisplay(); }
+            if (e.key === 'cmdZerarRanking' && e.newValue) {
+                let f = e.newValue.split('_')[0]; masterRanking[f] = { id: getBuckets()[f], players: {} }; saveToPython(); updateDisplay();
+            }
+            if (e.key === 'registerKill' && e.newValue) addStat(e.newValue.split('_')[0], '', 500, 1, 0);
+            if (e.key === 'registerX1Win' && e.newValue) addStat(e.newValue.split('_')[0], '', 1000, 0, 1);
+            if (e.key === 'manualPower' && e.newValue) {
+                let cmd = JSON.parse(e.newValue);
+                if (cmd.poder !== 'vida') addStat(cmd.id, '', cmd.poder * 100, 0, 0);
+            }
+            if (e.key === 'hostConfig' && e.newValue) {
+                let cfg = JSON.parse(e.newValue); custosPoderes = cfg.custos;
+                if (cfg.bgRanking) { document.body.style.backgroundImage = `url('${cfg.bgRanking}')`; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; }
+                else document.body.style.backgroundImage = 'none';
+            }
+        });
+
+        // 🟢🟢 NOVA MÁGICA: OUVIR TIKTOK DIRETO 🟢🟢
+        window.apiDiretaAtiva = false;
+        window.addEventListener('tiktok_direct', (e) => {
+            window.apiDiretaAtiva = true;
+            let eventName = e.detail.event;
+            if (eventName === 'aviso') return;
+            processarEventoDoRanking({ event: eventName, data: e.detail.data });
+        });
+
+        // 🚀 O RANKING AGORA RECEBE DADOS DIRETO DA ARENA (SEM ERROS DE WEBSOCKET!)
+        window.receberDadoDaArena = function(msg) {
+            processarEventoDoRanking(msg);
+        };
+
+        function processarEventoDoRanking(msg) {
+            let user = msg.data;
+            if (!user || !user.nickname) return;
+            let pic = user.profilePicUrl || user.profilePictureUrl || '';
+
+            if (msg.event === "like") addStat(user.nickname, pic, parseInt(user.likeCount) || 1, 0, 0);
+            if (msg.event === "gift") {
+                let moedas = user.diamondCount || user.coins || 1;
+                let pts = 10;
+                if (moedas >= custosPoderes.p8) pts = 5000;
+                else if (moedas >= custosPoderes.p7) pts = 1000;
+                else if (moedas >= custosPoderes.p6) pts = 500;
+                else if (moedas >= custosPoderes.p5) pts = 500;
+                else if (moedas >= custosPoderes.p4) pts = 400;
+                else if (moedas >= custosPoderes.p3) pts = 300;
+                else if (moedas >= custosPoderes.p2) pts = 200;
+                else if (moedas >= custosPoderes.p1) pts = 100;
+                addStat(user.nickname, pic, pts, 0, 0);
+            }
+        }
+
+        function updateDisplay() {
+            checkResets();
+            const titulos = { diario: "(HOJE)", semanal: "(SEMANA)", mensal: "(MÊS)", geral: "(HISTÓRICO)" };
+            document.querySelector('.header-score').innerText = `🏆 PONTOS ${titulos[filtroAtual]}`;
+            document.querySelector('.header-kill').innerText = `💀 KILLS ${titulos[filtroAtual]}`;
+            document.querySelector('.header-x1').innerText = `⚔️ X1 ${titulos[filtroAtual]}`;
+
+            let players = masterRanking[filtroAtual].players;
+            const top5Score = Object.values(players).sort((a, b) => b.score - a.score).slice(0, 5);
+            const top5Kill = Object.values(players).filter(p => p.kills > 0).sort((a, b) => b.kills - a.kills).slice(0, 5);
+            const top5X1 = Object.values(players).filter(p => p.x1Wins > 0).sort((a, b) => b.x1Wins - a.x1Wins).slice(0, 5);
+
+            const render = (arr, valKey, suffix, iconClass) => arr.length === 0 ? "<div style='text-align:center; color:#555;'>Aguardando...</div>" :
+                arr.map((p, i) => `<div class="rank-item"><span class="rank-pos ${iconClass}">${i + 1}º</span><img class="rank-img" src="${p.pPic ? 'https://wsrv.nl/?url=' + encodeURIComponent(p.pPic) + '&w=100&h=100&fit=cover' : ''}" onerror="this.src=''"> <div class="rank-info"><span class="rank-name">${p.id}</span><span class="${valKey}">${Math.floor(p[valKey === 'val-score' ? 'score' : valKey === 'val-kill' ? 'kills' : 'x1Wins'])} ${suffix}</span></div></div>`).join('');
+
+            document.getElementById("rank-list-score").innerHTML = render(top5Score, 'val-score', '', 'pos-score');
+            document.getElementById("rank-list-kill").innerHTML = render(top5Kill, 'val-kill', '⚔️', 'pos-kill');
+            document.getElementById("rank-list-x1").innerHTML = render(top5X1, 'val-x1', '👑', 'pos-x1');
+        }
+    </script>
+</body>
+</html>

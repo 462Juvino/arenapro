@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Arena PRO V11.5</title>
+    <style>
+
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial Black', sans-serif; color: white; transition: background 0.3s ease; }
+        #timer { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 60px; color: #FFD700; text-shadow: 0 0 25px rgba(255, 215, 0, 0.7); z-index: 1000; }
+        #arena { width: 100vw; height: 100vh; position: relative; z-index: 1; }
+        #fx-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5500; }
+        .follower-container { position: absolute; display: flex; flex-direction: column; align-items: center; pointer-events: none; transition: filter 0.3s, opacity 0.3s; }
+        .follower-ball { width: 100px; height: 100px; border-radius: 50%; border: 3px solid #fff; background: #111; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+
+        .aura-p1 { box-shadow: 0 0 25px 5px #ccc !important; } .aura-p2 { box-shadow: 0 0 30px 5px #00ff00 !important; }
+        .aura-p3 { box-shadow: 0 0 35px 5px #00ffff !important; } .aura-p4 { box-shadow: 0 0 40px 10px #ffff00 !important; }
+        .aura-p5 { box-shadow: 0 0 50px 15px #ff3300 !important; } .aura-p6 { box-shadow: 0 0 55px 15px #0088ff !important; }
+        .aura-p7 { box-shadow: 0 0 60px 20px #8a2be2 !important; } .aura-p8 { box-shadow: 0 0 70px 25px #000 !important; border: 3px solid #ff3300 !important; }
+
+        .follower-ball img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; z-index: 15; }
+
+        /* 🛡️ CORREÇÃO DE ALINHAMENTO DA SERRA: top -40% e left -40% */
+        /* 🛡️ CORREÇÃO DE ALINHAMENTO DA SERRA: top -40% e left -40% */
+        .serra-effect { position: absolute; width: 180%; height: 180%; top: -40%; left: -40%; z-index: 5; display: none; animation: spin 0.9s linear infinite; background-size: contain; background-repeat: no-repeat; background-position: center; pointer-events: none; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .status-ice { filter: hue-rotate(180deg) saturate(200%) brightness(1.2) drop-shadow(0 0 20px #00ffff); }
+        /* 🎇 ANIMAÇÕES NOVAS PARA OS PODERES (Livre de conflito de movimento) */
+        @keyframes pulsePoison { 0% { filter: hue-rotate(90deg) saturate(200%) drop-shadow(0 0 10px #0f0); } 100% { filter: hue-rotate(90deg) saturate(300%) drop-shadow(0 0 40px #0f0); } }
+        @keyframes pulseShock { 0% { filter: brightness(1.5) contrast(1.5) drop-shadow(0 0 15px #ff0); } 100% { filter: brightness(2.5) contrast(2) drop-shadow(0 0 50px #ff0); } }
+        @keyframes pulsePlasma { 0% { filter: hue-rotate(270deg) drop-shadow(0 0 15px #b200ff); } 100% { filter: hue-rotate(270deg) drop-shadow(0 0 50px #b200ff); } }
+        @keyframes flashFire { 0% { filter: brightness(3) sepia(1) hue-rotate(-50deg); } 100% { filter: none; } }
+
+        .status-ice { filter: hue-rotate(180deg) saturate(200%) brightness(1.2) drop-shadow(0 0 20px #00ffff); }
+        .status-frozen { filter: hue-rotate(180deg) saturate(200%) brightness(1.5) drop-shadow(0 0 30px #00ffff); }
+        .status-poison_active { animation: pulsePoison 0.6s infinite alternate !important; }
+        .status-shock_active { animation: pulseShock 0.2s infinite alternate !important; }
+        .status-plasma_active { animation: pulsePlasma 0.5s infinite alternate !important; }
+        .flash-fire { animation: flashFire 1s forwards; }
+
+        /* ⭕ UI INTERNA E BARRAS CIRCULARES */
+        .follower-ball::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#0f0 var(--hp, 100%), transparent 0); -webkit-mask: radial-gradient(transparent 58%, black 61%); mask: radial-gradient(transparent 58%, black 61%); z-index: 20; pointer-events: none; transition: background 0.2s; }
+        .follower-ball::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#0ff var(--pw, 0%), transparent 0); -webkit-mask: radial-gradient(transparent 68%, black 71%); mask: radial-gradient(transparent 68%, black 71%); z-index: 21; pointer-events: none; }
+        .inner-name { position: absolute; z-index: 25; color: white; font-size: 13px; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 2px -1px 0 #000, -1px 2px 0 #000; width: 90%; text-align: center; top: 50%; left: 50%; transform: translate(-50%, -50%); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+        .status-void { filter: drop-shadow(0 0 20px #8a2be2) brightness(0.5); }
+
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
+        #start-overlay h1 { color: #0f0; font-size: 40px; text-shadow: 0 0 20px #0f0; }
+
+        #x1-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; flex-direction: column; }
+        #x1-arena-wrapper {
+            background: #b200ff; padding: 5px; /* Cria a borda neon do octógono */
+            clip-path: polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%);
+            filter: drop-shadow(0 0 35px rgba(178, 0, 255, 1));
+        }
+        #x1-arena {
+            width: 800px; height: 500px;
+            background-color: #1a0033; /* Fundo roxo escuro garantido caso a imagem falhe! */
+            background-image: url('assets_jogo/arena%20X1.jpeg'); /* %20 corrige o erro do espaço no nome */
+            background-size: cover; background-position: center; position: relative; overflow: hidden;
+            clip-path: polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%);
+        }
+        #x1-timer { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 50px; color: white; text-shadow: 0 0 15px black; font-weight: bold; z-index: 10; }
+        #x1-result { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: row; gap: 50px; }
+        .x1-result-card { display: flex; flex-direction: column; align-items: center; padding: 30px; border-radius: 20px; background: rgba(255, 255, 255, 0.05); border: 2px solid; min-width: 250px; }
+        .x1-result-winner { border-color: gold; box-shadow: 0 0 50px rgba(255, 215, 0, 0.3); transform: scale(1.1); }
+        .x1-result-loser { border-color: #ff3300; box-shadow: 0 0 30px rgba(255, 51, 0, 0.2); opacity: 0.8; }
+        .x1-result-card img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 5px solid; margin-bottom: 15px; }
+        .x1-result-winner img { border-color: gold; box-shadow: 0 0 20px gold; }
+        .x1-result-loser img { border-color: #ff3300; filter: grayscale(1); }
+        .x1-result-status { font-size: 20px; margin-bottom: 10px; }
+        .x1-result-name { font-size: 24px; color: white; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        #winner-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #222 0%, #000 100%); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+        #podium { display: flex; align-items: flex-end; justify-content: center; gap: 40px; margin-top: 30px; }
+        .podium-item { display: flex; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); padding: 20px; border-radius: 15px; border-bottom: 5px solid; position: relative; }
+        .podium-item img { border-radius: 50%; object-fit: cover; margin-bottom: 12px; z-index: 5; background: #111; }
+        .p1 { order: 2; transform: translateY(-40px); border-color: gold; box-shadow: 0 10px 40px rgba(255, 215, 0, 0.15); }
+        .p1 img { border: 5px solid gold; width: 130px; height: 130px; box-shadow: 0 0 30px gold; }
+        .p2 { order: 1; border-color: silver; box-shadow: 0 10px 30px rgba(192, 192, 192, 0.1); }
+        .p2 img { border: 4px solid silver; width: 100px; height: 100px; box-shadow: 0 0 15px silver; }
+        .p3 { order: 3; border-color: #cd7f32; box-shadow: 0 10px 30px rgba(205, 127, 50, 0.1); }
+        .p3 img { border: 4px solid #cd7f32; width: 90px; height: 90px; box-shadow: 0 0 15px #cd7f32; }
+
+        /* 🐉 UI DO BAFO DO DRAGÃO */
+        .dragon-ui { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 30; background: rgba(0,0,0,0.7); border-radius: 50%; animation: pulsePlasma 0.5s infinite; }
+        .dragon-ui img { width: 35px; height: 35px; position: static; filter: drop-shadow(0 0 10px #f30); }
+        .dragon-time { color: #ff0; font-size: 26px; font-weight: 900; text-shadow: 0 0 5px #f30; }
+
+        /* 🎟️ LETREIRO DE TICKETS E TIMES */
+        #timer { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); font-size: 60px; color: #FFD700; text-shadow: 0 0 25px rgba(255, 215, 0, 0.7); z-index: 800; }
+        .ticket-icons { position: absolute; bottom: 5px; display: flex; gap: 5px; z-index: 26; font-size: 16px; text-shadow: 0 0 5px #000; pointer-events: none; }
+        .team-tag { position: absolute; top: -25px; font-size: 20px; z-index: 30; pointer-events: none; filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); }
+
+        /* 💍 ANEL DO TIME POR CIMA DA SERRA */
+        .team-ring { position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; border-radius: 50%; z-index: 35; pointer-events: none; transition: all 0.3s ease; }
+
+        /* 👼 MODO DIVINO (Sem Avatar, Sem Escudo, Com Barra Dourada) */
+        .is-angelic::after { display: none !important; }
+        .is-angelic::before { background: conic-gradient(#ffcc00 var(--hp, 100%), transparent 0) !important; }
+        .is-angelic img { display: none !important; }
+        .is-angelic .shield-wrapper { display: none !important; }
+        .is-angelic .inner-name { font-size: 8px !important; color: #ffcc00 !important; text-shadow: 0 0 15px #fff, 0 0 5px #000 !important; top: 50% !important; transform: translate(-50%, -50%) scale(1.5) !important; z-index: 50 !important; }
+
+
+        /* 🪟 ESTILOS DAS JANELAS FLUTUANTES */
+        #hud-botoes { position: absolute; top: 15px; right: 15px; z-index: 9500; display: flex; gap: 10px; }
+        .hud-btn { background: rgba(0, 0, 0, 0.8); border: 2px solid; color: white; padding: 10px 15px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; font-family: 'Arial Black', sans-serif; text-transform: uppercase; }
+        .hud-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .btn-pnl { border-color: #0ff; text-shadow: 0 0 5px #0ff; box-shadow: 0 0 10px rgba(0,255,255,0.3); }
+        .btn-rnk { border-color: #FFD700; text-shadow: 0 0 5px #FFD700; box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+
+        .hud-janela { display: none; position: absolute; z-index: 9000; background: rgba(5, 5, 5, 0.85); border-radius: 12px; overflow: hidden; border: 2px solid; box-shadow: 0 15px 40px rgba(0,0,0,0.9); flex-direction: column; }
+        .hud-janela-header { background: #111; padding: 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .hud-janela-header span { font-size: 14px; color: #fff; margin-left: 10px; }
+        .hud-janela-acoes button { background: #333; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 5px; }
+        .hud-janela-acoes button:hover { background: #555; }
+        .hud-iframe { width: 100%; height: 100%; border: none; background: transparent; }
+
+        /* Posições (Painel na direita maior, Ranking embaixo centralizado) */
+        #janela-painel { top: 70px; right: 15px; width: 40vw; height: 88vh; border-color: #0ff; }
+        #janela-ranking { bottom: 15px; left: 50%; transform: translateX(-50%); width: 51vw; height: 350px; border-color: #FFD700; }
+
+
+    </style>
+</head>
+<body>
+    <div id="start-overlay"><h1>▶️ INICIAR ARENA V11.5</h1><p>Clique para liberar os áudios e conectar a API</p></div>
+    <div id="timer">02:00</div>
+    <canvas id="fx-canvas"></canvas>
+
+    <div id="status-overlay" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 3px solid #FFD700; border-radius: 20px; padding: 25px; z-index: 8600; color: white; width: 90vw; max-width: 1200px; height: 85vh; box-shadow: 0 0 50px rgba(255,215,0,0.5); pointer-events: none;">
+        <h2 style="color: #FFD700; text-align: center; margin-top: 0; font-size: 40px; text-shadow: 0 0 15px #FFD700; height: 50px; margin-bottom: 20px;">📊 STATUS DE TICKETS</h2>
+
+        <div id="status-list" style="height: calc(100% - 90px); overflow-y: auto; column-count: 2; column-gap: 30px; padding: 5px;">
+            </div>
+    </div>
+    <div id="arena"></div>
+    <div id="regras-overlay" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 2px solid #0ff; border-radius: 15px; padding: 25px 40px; z-index: 8500; color: white; width: 85%; max-width: 750px; box-shadow: 0 0 40px rgba(0,255,255,0.3); pointer-events: none;">
+        <h2 style="color: #0ff; text-align: center; margin-top: 0; font-size: 35px; text-shadow: 0 0 10px #0ff; margin-bottom: 20px;">💬 COMANDOS DO CHAT</h2>
+        <div style="font-size: 20px; line-height: 1.8; font-weight: bold; column-count: 2; column-gap: 30px;">
+            <p style="break-inside: avoid;"><span style="color:#0ff">@Nome</span> : Tenta puxar pro X1 (gasta 1🎫) ou dá tiro básico.</p>
+            <p style="break-inside: avoid;"><span style="color:#0f0">@Nome!3</span> : Força um Tiro Nível 3 (gasta 3⚡).</p>
+            <p style="break-inside: avoid;"><span style="color:#f30">/max</span> : Dispara a Suprema (Exige Nível 11 ou 12).</p>
+            <p style="break-inside: avoid;"><span style="color:#FFD700">/status</span> : Exibe o seu saldo de Tickets e Munição.</p>
+            <p style="break-inside: avoid;"><span style="color:#ff00aa">@Nome entra</span> : Recruta alguém para seu time.</p>
+            <p style="break-inside: avoid;"><span style="color:#ff3300">@Nome sai</span> : Expulsa jogador do seu time.</p>
+            <p style="break-inside: avoid;"><span style="color:#aaaaaa">/sair</span> : Abandona a sua equipe atual.</p>
+            <p style="break-inside: avoid;"><span style="color:#00ff00">/up e /low</span> : Altera o nível da sua serra.</p>
+        </div>
+    </div>
+
+    <div id="hud-botoes">
+        <button class="hud-btn btn-pnl" onclick="toggleHud('janela-painel')">⚙️ Painel</button>
+        <button class="hud-btn btn-rnk" onclick="toggleHud('janela-ranking')">🏆 Ranking</button>
+    </div>
+
+    <div id="janela-painel" class="hud-janela">
+        <div class="hud-janela-header">
+            <span>⚙️ Controle Host</span>
+            <div class="hud-janela-acoes">
+                <button onclick="popOut('painel.html', 'janela-painel')">↗️ Abrir Aba</button>
+                <button style="background: #ff3300;" onclick="toggleHud('janela-painel')">❌</button>
+            </div>
+        </div>
+        <iframe id="iframe-painel" class="hud-iframe"></iframe>
+    </div>
+
+    <div id="janela-ranking" class="hud-janela">
+        <div class="hud-janela-header">
+            <span style="color: #FFD700;">🏆 Top 5</span>
+            <div class="hud-janela-acoes">
+                <button onclick="popOut('Top5.html', 'janela-ranking')">↗️ Abrir Aba</button>
+                <button style="background: #ff3300;" onclick="toggleHud('janela-ranking')">❌</button>
+            </div>
+        </div>
+        <iframe id="iframe-ranking" class="hud-iframe"></iframe>
+    </div>
+
+    <script>
+        // 🪟 LÓGICA DE CONTROLE DAS JANELAS
+        function toggleHud(idJanela) {
+            let janela = document.getElementById(idJanela);
+            let iframe = janela.querySelector('iframe');
+
+            if (janela.style.display === 'flex') {
+                janela.style.display = 'none';
+            } else {
+                janela.style.display = 'flex';
+                // Carrega o link apenas quando abrir a janela pela primeira vez (poupa memória)
+                if (!iframe.src) {
+                    let srcUrl = idJanela === 'janela-painel' ? 'painel.html' : 'Top5.html';
+                    iframe.src = srcUrl;
+                }
+            }
+        }
+
+        function popOut(url, idJanela) {
+            // Fecha a janela interna
+            document.getElementById(idJanela).style.display = 'none';
+            // Abre numa nova aba do navegador
+            window.open(url, '_blank', 'width=800,height=900,menubar=no,toolbar=no');
+        }
+    </script>
+
+    <div id="x1-overlay">
+        <div id="x1-arena-wrapper">
+            <div id="x1-arena">
+                <div id="x1-timer">60</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="x1-result"></div>
+    <div id="winner-screen">
+        <h1 style="color: gold; font-size: 55px; text-shadow: 0 0 25px gold; margin-top: 20px; margin-bottom: 10px;">👑 MAIORES ABATEDORES 👑</h1>
+        <div id="podium"></div>
+        <button onclick="reiniciarTudo()" style="margin-top: 50px; padding: 18px 50px; cursor: pointer; background: linear-gradient(180deg, #ff3300, #ff0050); border: none; color: white; font-weight: bold; border-radius: 12px; font-size: 22px; box-shadow: 0 5px 20px rgba(255,0,0,0.4); text-transform: uppercase;">REINICIAR PARTIDA</button>
+        <p id="auto-restart-msg" style="margin-top: 20px; font-size: 16px; color: #888; display: none;">Reiniciando automaticamente em <span id="auto-restart-count"></span>s...</p>
+    </div>
+    <audio id="bgMusic" loop preload="auto"><source src="assets_jogo/audios/background_music.mp3" type="audio/mpeg"></audio>
+    <audio id="x1Music" loop preload="auto"><source src="assets_jogo/audios/x1_music.mp3" type="audio/mpeg"></audio>
+
+    <script>
+        if (localStorage.getItem('versao_arena') !== 'V11.5') { localStorage.clear(); localStorage.setItem('versao_arena', 'V11.5'); }
+
+        window.saldoTicketsX1 = JSON.parse(localStorage.getItem('x1_balances') || '{}');
+        window.chargedPowers = JSON.parse(localStorage.getItem('charged_powers') || '{}');
+
+        const canvas = document.getElementById('fx-canvas'); const ctx = canvas.getContext('2d');
+        const arena = document.getElementById("arena");
+        let timeLeft = 600; let balls = []; let particles = []; let floatingTexts = []; let projectiles = [];
+        let gameActive = true; let frameCount = 0;
+
+        let vidaPadrao = 10000; let vfxMult = 1.0;
+        let isX1Active = false; let x1Fighters = []; let x1TimeLeft = 60; let x1ReqId = null;
+        let mapaPresentesAtivos = { x1: [], power: [], cure: [], shield: [] };
+
+        window.globalSpeedMult = 0.8;
+        const music = document.getElementById("bgMusic");
+        let musicStarted = false;
+        window.globalVolSFX = 0.8; // Variável de volume dos efeitos que estava faltando
+
+        document.getElementById('start-overlay').addEventListener('click', function() {
+            this.style.display = 'none';
+            let cfgStr = localStorage.getItem('hostConfig');
+            let initialVol = 0.5; let startMusic = true;
+            if(cfgStr) {
+                let cfg = JSON.parse(cfgStr);
+                if(cfg.volume !== undefined) initialVol = parseFloat(cfg.volume);
+                if(cfg.musica !== undefined) startMusic = cfg.musica;
+            }
+            if(!musicStarted && music && startMusic) {
+                music.volume = initialVol;
+                music.play().then(() => musicStarted = true).catch(e => console.log(e));
+            }
+            verificarEConectar();
+        });
+        const BOT_NAMES = ["Guerreiro", "Ninja", "Mago", "Lutador", "Arqueiro", "Samurai", "Vingador", "Sombra", "Titã", "Lenda"];
+        let botIndex = 1;
+
+        // ⚔️ O NOVO ARSENAL V12 (TIERS E SUBNÍVEIS)
+        const POWER_ASSETS = {
+            1: { name: "Básica",   type: "normal", color: "#cccccc", levels: { 1: { img: 'saw_blade_default.webp', proj: 'saw_blade_golden_thorns.webp' }, 2: { img: 'saw_blade_silver_grace.webp', proj: 'saw_blade_golden_majesty.webp' } } },
+            2: { name: "Venenosa", type: "poison", color: "#00ff00", levels: { 1: { img: 'saw_blade_large.webp', proj: 'saw_blade_styled.webp' }, 2: { img: 'saw_blade_emerald_mantis.webp', proj: 'projectile_poison.webp' }, 3: { img: 'saw_blade_venom_cobra.webp', proj: 'projectile_poison.webp' } } },
+            3: { name: "Gelo",     type: "ice",    color: "#00ffff", levels: { 1: { img: 'saw_blade_ice.webp', proj: 'impact_effect.webp' }, 2: { img: 'saw_blade_abyssal_megalodon.webp', proj: 'projectile_ice.webp' } } },
+            4: { name: "Diamante", type: "normal", color: "#00aaff", levels: { 1: { img: 'saw_blade_diamond_new.webp', proj: 'saw_blade_diamond_spikes.webp' }, 2: { img: 'saw_blade_crystal_prism.webp', proj: 'saw_blade_diamond_spikes.webp' } } },
+            5: { name: "Choque",   type: "shock",  color: "#ffff00", levels: { 1: { img: 'saw_blade_shock.webp', proj: 'projectile_shoc.webp' }, 2: { img: 'saw_blade_shock_v2.webp', proj: 'saw_blade_death_stalker.webp' } } },
+            6: { name: "Sangue",   type: "blood",  color: "#ff0055", levels: { 1: { img: 'saw_blade_crimson_raptor.webp', proj: 'saw_blade_golden_majesty.webp' }, 2: { img: 'saw_blade_blood.webp', proj: 'saw_blade_golden_majesty.webp' } } },
+            7: { name: "Fogo",     type: "fire",   color: "#ff3300", levels: { 1: { img: 'saw_blade_fire.webp', proj: 'energy_orb_styled.webp' }, 2: { img: 'saw_blade.webp', proj: 'energy_orb.webp' } } },
+            8: { name: "Morte",    type: "death",  color: "#333333", levels: { 1: { img: 'saw_blade_marrow.webp', proj: 'saw_blade_marrow.webp' } } },
+            9: { name: "Plasma",   type: "plasma", color: "#b200ff", levels: { 1: { img: 'saw_blade_plasma.webp', proj: 'saw_blade_obsidian_ravager.webp' }, 2: { img: 'saw_blade_obsidian_ravager.webp', proj: 'saw_blade_iridescent_petals.webp' }, 3: { img: 'saw_blade_iridescent_petals.webp', proj: 'saw_blade_iridescent_petals.webp' } } },
+            10: { name: "Void",    type: "void",   color: "#4b0082", levels: { 1: { img: 'saw_blade_void.webp', proj: 'saw_blade_dementor.webp' } } },
+            11: { name: "Inferno", type: "inferno",color: "#ff0000", levels: { 1: { img: 'saw_blade_inferno.webp', proj: 'projectile_fire.webp' } } },
+            12: { name: "Anjo",    type: "angelic",color: "#ffcc00", levels: { 1: { img: 'saw_blade_angelic_seraph.webp', proj: 'saw_blade_angelic_ultimate.webp' }, 2: { img: 'saw_blade_crown_thorns.webp', proj: 'saw_blade_angelic_ultimate.webp' } } }
+        };
+        // 💰 Custos progressivos atualizados para os 12 Tiers de serras
+        let custosPoderes = { p1: 1, p2: 5, p3: 10, p4: 50, p5: 100, p6: 250, p7: 500, p8: 1000, p9: 2500, p10: 5000, p11: 7500, p12: 10000 };
+
+        // 🚀 SISTEMA DE PRELOAD DE ASSETS (Carrega tudo na memória RAM imediatamente)
+        function preloadAssets() {
+            const imagensParaCarregar = [
+                'assets_jogo/imagens/saw_blade_default.webp', 'assets_jogo/imagens/saw_blade_large.webp',
+                'assets_jogo/imagens/saw_blade_ice.webp', 'assets_jogo/imagens/saw_blade_shock.webp',
+                'assets_jogo/imagens/saw_blade_fire.webp', 'assets_jogo/imagens/saw_blade_plasma.webp',
+                'assets_jogo/imagens/saw_blade_void.webp', 'assets_jogo/imagens/saw_blade_inferno.webp',
+                'assets_jogo/imagens/saw_blade_styled.webp', 'assets_jogo/imagens/energy_orb.webp',
+                'assets_jogo/imagens/energy_orb_styled.webp', 'assets_jogo/imagens/impact_effect.webp',
+                'assets_jogo/imagens/special_power_icon.webp', /* 🐲 Ícone do Dragão */
+                'assets_jogo/imagens/dragon_projectile.webp',  /* 🐲 O Dragão em si */
+                'arena%20X1.jpeg' // O fundo do Octógono
+            ];
+            imagensParaCarregar.forEach(url => {
+                let imgCache = new Image();
+                imgCache.src = url;
+            });
+        }
+        window.addEventListener('load', preloadAssets); // Roda sozinho assim que o executável abre
+
+        let conexaoNuvemEstabelecida = false;
+        let wsNuvem = null;
+        let wsTikfinity = null;
+        let lastTiktokUser = "";
+
+        // 🏆 Envia os dados para a janela embutida do Ranking!
+        function repassarParaRanking(data) {
+            let iframe = document.getElementById('iframe-ranking');
+            if (iframe && iframe.contentWindow && iframe.contentWindow.receberDadoDaArena) {
+                iframe.contentWindow.receberDadoDaArena(data);
+            }
+        }
+
+        // 🧠 A Mente Brilhante: Decide se usa o TikFinity do PC ou a Torre do Render!
+        function verificarEConectar() {
+            let urlParams = new URLSearchParams(window.location.search);
+            let targetUser = urlParams.get('user');
+
+            if (!targetUser) {
+                let cfgStr = localStorage.getItem('hostConfig');
+                if (cfgStr) {
+                    let cfg = JSON.parse(cfgStr);
+                    if (cfg.tiktok_user) targetUser = cfg.tiktok_user;
+                }
+            }
+
+            if (!targetUser) {
+                if (conexaoNuvemEstabelecida && wsNuvem) {
+                    console.log("🔌 Nuvem desligada. Voltando pro PC...");
+                    wsNuvem.close();
+                }
+                if (!wsTikfinity || wsTikfinity.readyState !== WebSocket.OPEN) {
+                    wsTikfinity = new WebSocket("ws://127.0.0.1:21213/");
+                    wsTikfinity.onopen = () => { console.log("✅ TIKFINITY CONECTADO NO PC!"); };
+                    wsTikfinity.onmessage = (event) => {
+                        try {
+                            let d = JSON.parse(event.data);
+                            processarEventoDaAPI(d);
+                            repassarParaRanking(d); // Alimenta o Top 5 via PC!
+                        } catch(e) {}
+                    };
+                    wsTikfinity.onerror = () => { console.log("⚠️ TikFinity não encontrado no PC."); };
+                    wsTikfinity.onclose = () => { wsTikfinity = null; };
+                }
+                lastTiktokUser = "";
+                return;
+            }
+
+            targetUser = targetUser.replace('@', '').trim();
+            if (conexaoNuvemEstabelecida && lastTiktokUser === targetUser) return;
+
+            if (wsNuvem) wsNuvem.close();
+            if (wsTikfinity) { wsTikfinity.close(); wsTikfinity = null; }
+
+            lastTiktokUser = targetUser;
+            console.log(`☁️ Conectando na Torre de Controle: @${targetUser}...`);
+
+            wsNuvem = new WebSocket("wss://torre-de-controle-rdm.onrender.com:443/");
+
+            wsNuvem.onopen = () => {
+                conexaoNuvemEstabelecida = true;
+                console.log(`✅ NUVEM CONECTADA! Escutando @${targetUser}`);
+                wsNuvem.send(JSON.stringify({"action": "connect", "tiktok_user": targetUser}));
+                floatingTexts.push(new FloatingText(window.innerWidth/2, window.innerHeight/2, "☁️ NUVEM CONECTADA!", "#0f0"));
+            };
+
+            wsNuvem.onmessage = (event) => {
+                try {
+                    let d = JSON.parse(event.data);
+                    processarEventoDaAPI(d);
+                    repassarParaRanking(d); // Alimenta o Top 5 via Nuvem!
+                } catch(e) {}
+            };
+
+            wsNuvem.onerror = (e) => { console.log("⚠️ Falha ao conectar na nuvem."); };
+
+            wsNuvem.onclose = () => {
+                conexaoNuvemEstabelecida = false;
+                wsNuvem = null;
+            };
+        }
+
+        // Verifica a cada 2 segundos se o Host digitou um @ no painel
+        setInterval(verificarEConectar, 2000);
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize; resize();
+
+        function reiniciarTudo() {
+            localStorage.setItem('gameStatus', 'reset_' + Date.now());
+            if(window.autoRestartTimer) clearInterval(window.autoRestartTimer);
+
+            // 🛡️ Esconde as telas com segurança (sem dar erro se não existirem)
+            let winScreen = document.getElementById('winner-screen');
+            if(winScreen) winScreen.style.display = 'none';
+
+            // 🧹 FAXINA DE MEMÓRIA (Limpa o pódio para não pesar o navegador a cada reinício)
+            let podiumEl = document.getElementById('podium');
+            if(podiumEl) podiumEl.innerHTML = '';
+
+            let autoMsg = document.getElementById('auto-restart-msg');
+            if(autoMsg) autoMsg.style.display = 'none';
+
+            balls.forEach(b => { if(b.el) b.el.remove(); });
+            dragons.forEach(d => { if(d.el) d.el.remove(); });
+            if(window.blackHoles) window.blackHoles.forEach(bh => { if(bh.el) bh.el.remove(); });
+            balls = []; particles = []; floatingTexts = []; projectiles = []; dragons = []; window.blackHoles = []; botIndex = 1;
+
+            window.playerTeams = {}; window.teamsInfo = {}; teamCounter = 0;
+
+            // Restaura o tempo
+            let cfgStr = localStorage.getItem('hostConfig');
+            if (cfgStr) { let cfg = JSON.parse(cfgStr); timeLeft = cfg.tempo || 300; } else { timeLeft = 300; }
+
+            let timerEl = document.getElementById("timer");
+            if(timerEl) timerEl.innerText = Math.floor(timeLeft/60)+":"+String(timeLeft%60).padStart(2,'0');
+
+            // 🚀 RELIGA O MOTOR DO JOGO
+            gameActive = true; isX1Active = false;
+            atualizarPainel();
+            update();
+        }
+
+        function processarEventoDaAPI(data) {
+            if (!data || !data.data || !data.data.nickname || !gameActive) return;
+            let userId = data.data.nickname.trim(); let pic = data.data.profilePictureUrl || '';
+            let isInteraction = ['chat', 'like', 'gift', 'join'].includes(data.event);
+            if (isInteraction) spawnPlayer(userId, pic, false);
+
+            let ball = balls.find(b => b.id === userId); if (!ball) return;
+            ball.lastActiveTs = Date.now(); atribuirCamadas();
+
+            // 🕵️ EXTRAÇÃO DE NÍVEL DO TIKFINITY (Se for fã clube, usa o nível do fã clube, senão usa o nível global da conta)
+            if (data.data.fanClubLevel) ball.followerLevel = parseInt(data.data.fanClubLevel);
+            else if (data.data.userLevel) ball.followerLevel = parseInt(data.data.userLevel);
+            else if (!ball.followerLevel) ball.followerLevel = 1; // Visitante comum
+
+            if (data.event === 'gift') {
+                // 🕵️ RADAR LIGADO: Imprime no console (F12) o dado cru que chegou da API!
+                console.log("🎁 PRESENTE RAW (CRU):", JSON.stringify(data));
+
+                window.filaPresentes = window.filaPresentes || [];
+                window.filaPresentes.push(data);
+                return; // Joga pra fila e sai. O processador no loop vai cuidar deles 1 por 1!
+            }
+
+            if (data.event === 'like') { ball.likes += data.data.likeCount; ball.checkUpgrades(); return; } // 🎯 Recebe Taps
+
+            if (data.event === 'chat' && data.data.comment) {
+                let textRaw = data.data.comment.trim(); let textLower = textRaw.toLowerCase();
+                let txtLimpo = textLower.normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' ');
+
+                // 🛑 ESCUDO ANTI-ECO (Bloqueia a API de cobrar 3 tickets por ler a mesma mensagem ao mesmo tempo)
+                window.lastChatCmds = window.lastChatCmds || {};
+                let cmdKey = userId + "_" + txtLimpo;
+                if (window.lastChatCmds[cmdKey] && (Date.now() - window.lastChatCmds[cmdKey] < 2000)) return;
+                window.lastChatCmds[cmdKey] = Date.now();
+
+
+
+                // 📖 COMANDO DE REGRAS NO CHAT (/comandos)
+                if (txtLimpo === '/comandos') {
+                    window.tempRulesTimer = Date.now() + 5000;
+                    return;
+                }
+
+                // 📊 COMANDO DE STATUS DE TICKETS (/status)
+                if (txtLimpo === '/status') {
+                    mostrarStatusOverlay();
+                    return;
+                }
+
+                // 🚪 COMANDO LIVRE PARA SAIR DA EQUIPE
+                if (txtLimpo === '/sair' || txtLimpo === 'sair') {
+                    if (ball.teamId) processarComandoTime(ball, ball, 'sair_proprio');
+                    return;
+                }
+
+                // 🔄 MARCHA MANUAL DE SKINS E TIERS (/up e /low)
+                if (txtLimpo === '/up' || txtLimpo === '/low') {
+                    if (ball.powerTier === 0 || typeof ball.getUnlockedStates !== 'function') return;
+
+                    let states = ball.getUnlockedStates();
+                    if (states.length === 0) return;
+
+                    // Acha em qual página da mochila o jogador está vestido no momento
+                    let currIdx = states.findIndex(st => st.t === ball.powerTier && st.s === ball.powerSub);
+                    if (currIdx === -1) currIdx = states.length - 1; // Segurança
+
+                    if (txtLimpo === '/low' && currIdx > 0) {
+                        let nextSt = states[currIdx - 1]; // Pega o item inferior
+                        ball.setPower(nextSt.t, nextSt.s);
+                        let name = POWER_ASSETS[nextSt.t].name;
+                        floatingTexts.push(new FloatingText(ball.x+50, ball.y, `⬇️ ${name} Lvl.${nextSt.s}`, "#ccc"));
+                    } else if (txtLimpo === '/up' && currIdx < states.length - 1) {
+                        let nextSt = states[currIdx + 1]; // Pega o item superior
+                        ball.setPower(nextSt.t, nextSt.s);
+                        let name = POWER_ASSETS[nextSt.t].name;
+                        floatingTexts.push(new FloatingText(ball.x+50, ball.y, `⬆️ ${name} Lvl.${nextSt.s}`, "#FFD700"));
+                    }
+                    return;
+                }
+
+                // 💥 COMANDO MANUAL DE ULTIMATE (/max)
+                if (txtLimpo === '/max' || txtLimpo === 'max') {
+                    // 🛡️ TRAVA DA COROA DE ESPINHOS: Verifica se algum deus ativou o bloqueio supremo
+                    let coroaAtiva = balls.some(b => b.powerTier === 12 && b.powerSub === 2);
+                    if (coroaAtiva) {
+                        floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "❌ SUPREMAS BLOQUEADAS PELA COROA!", "#ff0055"));
+                        return;
+                    }
+
+                    if (ball.powerTier >= 11 && !isX1Active) {
+                        let ammo = window.chargedPowers[ball.id] || 0;
+                        let custoAmmo = (ball.powerTier === 12) ? 14 : 8; // 8 para Inferno, 14 para Anjo
+
+                        if (ammo >= custoAmmo) {
+                            window.chargedPowers[ball.id] -= custoAmmo;
+                            localStorage.setItem('charged_powers', JSON.stringify(window.chargedPowers));
+                            atualizarPainel();
+
+                            if (ball.powerTier === 12) triggerFinalJudgment(ball);
+                            else dragons.push(new DragonFlight(ball.x+50, ball.y+50, ball.id));
+
+                            let dui = ball.el.querySelector('.dragon-ui'); if(dui) dui.remove();
+                        } else {
+                            floatingTexts.push(new FloatingText(ball.x + 50, ball.y, `❌ FALTAM ${custoAmmo - ammo} ⚡`, "#ff3300"));
+                        }
+                    }
+                    return;
+                }
+
+                // 🤝 COMANDOS DE TIME (@nome entra / @nome sai)
+                let matchTime = txtLimpo.match(/@(.+?)\s+(entra|sai)/) || txtLimpo.match(/(entra|sai)\s+@(.+)/);
+                if (matchTime) {
+                    let acao = (matchTime[1] === 'entra' || matchTime[2] === 'entra') ? 'entra' : 'sai';
+                    let alvoNomeRaw = (matchTime[1] === 'entra' || matchTime[1] === 'sai') ? matchTime[2] : matchTime[1];
+
+                    // Limpa os espaços do nome extraído para usar o mesmo radar super potente do X1
+                    let alvoNomeLimpo = alvoNomeRaw.replace(/\s+/g, '');
+                    let alvo = encontrarAlvo(alvoNomeLimpo, ball.id);
+
+                    if (alvo) processarComandoTime(ball, alvo, acao);
+                    return;
+                }
+
+                if (textLower.startsWith('@')) {
+                    let textSemArroba = textLower.substring(1).trim();
+                    let queryLimpa = textSemArroba.normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
+
+                    let alvoNome = queryLimpa;
+                    let forceShot = false;
+                    let shotLevel = 1;
+
+                    // 🔍 DETECTOR DO COMANDO DE TIRO: Verifica se tem "!" e puxa a força
+                    let matchCmd = queryLimpa.match(/(.*?)!(.*)/);
+                    if (matchCmd) {
+                        alvoNome = matchCmd[1];
+                        forceShot = true;
+                        let pLvl = parseInt(matchCmd[2]);
+                        if (!isNaN(pLvl) && pLvl > 0) shotLevel = pLvl;
+                    }
+
+                    let oponente = encontrarAlvo(alvoNome, userId);
+                    if (oponente) {
+                        let hasX1 = window.saldoTicketsX1[userId] && window.saldoTicketsX1[userId] > 0;
+                        let hasPwr = window.chargedPowers[userId] && window.chargedPowers[userId] > 0;
+
+                        // ⚔️ PRIORIDADE X1: Se não usou "!" e tem ticket de X1, vai pra jaula!
+                        if (hasX1 && !forceShot && !isX1Active) {
+                            window.saldoTicketsX1[userId]--; localStorage.setItem('x1_balances', JSON.stringify(window.saldoTicketsX1));
+                            atualizarPainel();
+                            floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "⚔️ JAULA!", "#ff3300"));
+                            iniciarX1(ball, oponente);
+                            return;
+                        }
+
+                        // ⚡ MUNIÇÃO: Se usou "!" ou não tem ticket de X1
+                        if (hasPwr || forceShot) {
+                            let ammoCost = shotLevel;
+                            if (ball.powerLvl >= 5) ammoCost = shotLevel * 2; // Da serra de Fogo pra cima (Nível 5+), o custo é dobrado por nível!
+
+                            if (window.chargedPowers[userId] >= ammoCost) {
+                                window.chargedPowers[userId] -= ammoCost;
+                                localStorage.setItem('charged_powers', JSON.stringify(window.chargedPowers));
+                                atualizarPainel();
+                                dispararPoderAtivo(ball, oponente, shotLevel);
+                            } else {
+                                floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "❌ SEM MUNIÇÃO!", "#ff3300"));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function encontrarAlvo(query, meuId) {
+            let alvos = balls.filter(b => b.id !== meuId && !b.isBot);
+            let exato = alvos.find(b => b.id.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '') === query);
+            if(exato) return exato;
+            let parciais = alvos.filter(b => b.id.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '').startsWith(query));
+            if(parciais.length === 1) return parciais[0];
+            return null;
+        }
+
+        function dispararPoderAtivo(atirador, alvo, shotMult = 1) {
+            let tier = atirador.powerTier || 1;
+            let sub = atirador.powerSub || 1;
+            let qtyMult = (shotMult > 1) ? shotMult * 2 : 1;
+
+            // 🌑 TIER 10 (VOID): Não tem tiro comum, invoca o Buraco Negro no centro!
+            if(tier === 10) {
+                window.blackHoles.push(new BlackHole(atirador.id));
+                return;
+            }
+
+            let assetProj = POWER_ASSETS[tier].levels[sub] ? POWER_ASSETS[tier].levels[sub].proj : 'energy_orb.webp';
+
+            // TIER 1 (BÁSICA): Reduz o tamanho do projétil no nível 1 conforme solicitado
+            let isPequeno = (tier === 1 && sub === 1) || (tier === 5 && sub === 2) || (tier === 6) || (tier === 12);
+
+            if(tier === 7) {
+                // 🔥 TIER 7 (FOGO): Modo metralhadora intercalando os assets!
+                atirador.fireMode = { ticks: 15 * qtyMult, target: alvo, shotMult: shotMult, count: 0 };
+            }
+            else {
+                // Disparo padrão para os outros Tiers baseado em rajadas cronometradas
+                for(let i=0; i < 6 * qtyMult; i++) {
+                    setTimeout(() => {
+                        if(!gameActive || !balls.includes(atirador) || alvo.hp <= 0) return;
+                        projectiles.push(new Projectile(atirador.x+50, atirador.y+50, alvo, POWER_ASSETS[tier].type, `assets_jogo/imagens/${assetProj}`, atirador.id, shotMult, isPequeno));
+                    }, i * 180);
+                }
+            }
+        }
+
+        let shockwaves = [];
+
+        let dragons = [];
+        class DragonFlight {
+            constructor(startX, startY, ownerId) {
+                this.x = startX; this.y = startY; this.ownerId = ownerId;
+                let ownerBall = balls.find(b => b.id === ownerId); let oTeam = ownerBall ? ownerBall.teamId : null;
+                this.targets = balls.filter(b => b.hp > 0 && b.id !== ownerId && (!oTeam || b.teamId !== oTeam));
+                this.currentTarget = this.targets.shift();
+
+                this.speed = 10; // 🐌 Mais devagar (antes era 22) para vermos a animação!
+                this.angle = 0;
+
+                // 🐉 CRIANDO O GIF ANIMADO POR CIMA DA TELA
+                this.el = document.createElement('img');
+                this.el.src = 'assets_jogo/imagens/dragon-72.gif';
+                this.el.style.position = 'absolute';
+                this.el.style.width = '600px';
+                this.el.style.height = '400px';
+                this.el.style.zIndex = '5500';
+                this.el.style.pointerEvents = 'none';
+                this.el.style.transformOrigin = 'center center';
+                this.el.style.filter = 'drop-shadow(0 0 15px #ff3300)'; // Dá um brilho no GIF!
+                document.getElementById('arena').appendChild(this.el);
+
+                this.sound = new Audio('assets_jogo/audios/dragon_roar_sfx.mp3');
+                this.sound.volume = window.globalVolSFX;
+                this.sound.play().catch(()=>{});
+            }
+            update() {
+                if(!this.currentTarget) {
+                    if(this.el) this.el.remove(); // Some da tela quando não tem alvo
+                    return false;
+                }
+                if(this.currentTarget.hp <= 0) { this.currentTarget = this.targets.shift(); return true; }
+
+                let tx = this.currentTarget.x + 50; let ty = this.currentTarget.y + 50;
+                let dx = tx - this.x; let dy = ty - this.y; let dist = Math.sqrt(dx*dx + dy*dy);
+
+                if(dist < 50) {
+                    let ownerBall = balls.find(b => b.id === this.ownerId);
+                    let ownerTier = ownerBall ? (ownerBall.powerTier || 11) : 11;
+                    let targetTier = this.currentTarget.powerTier || 1;
+
+                    let diff = ownerTier - targetTier;
+                    let dmgFactor = 0;
+
+                    if (ownerTier === 11 && targetTier === 12) {
+                        dmgFactor = 0.30; // 🎯 Serra Inferno só tira 30% estável do Anjo!
+                    } else if (diff >= 4) {
+                        dmgFactor = 1.0;  // 💀 Hitkill completo se tiver 4 ou mais níveis de vantagem
+                    } else if (diff === 3) {
+                        dmgFactor = 0.60; // 3 níveis abaixo = 60%
+                    } else if (diff === 2) {
+                        dmgFactor = 0.50; // 2 níveis abaixo = 50%
+                    } else if (diff === 1) {
+                        dmgFactor = 0.40; // 1 nível abaixo = 40%
+                    } else {
+                        dmgFactor = 0.15; // Mesmo nível ou superior toma dano leve de raspão
+                    }
+
+                    if (dmgFactor >= 1.0) {
+                        this.currentTarget.die(this.ownerId);
+                        floatingTexts.push(new FloatingText(this.x, this.y, "🔥 EXTERMINADO!", "#f30"));
+                    } else {
+                        this.currentTarget.takeDamage(vidaPadrao * dmgFactor, this.ownerId, true);
+                        floatingTexts.push(new FloatingText(this.x, this.y, `🔥 DANADO! -${Math.round(dmgFactor*100)}%`, "#ff3300"));
+                    }
+                    this.sound.currentTime = 0; this.sound.play().catch(()=>{});
+                    createExplosion(this.x, this.y, '#ff3300', 'fire', 80);
+                    this.currentTarget = this.targets.shift();
+                } else {
+                    this.x += (dx/dist) * this.speed;
+                    this.y += (dy/dist) * this.speed;
+
+                    // ✈️ CURVA SUAVE TELEGUIDADA
+                    let targetAngle = Math.atan2(dy, dx);
+                    let angleDiff = targetAngle - this.angle;
+
+                    // Corrige o ângulo para ele não dar um giro de 360 do nada
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                    this.angle += angleDiff * 0.12; // Velocidade da curva (0.12 = macio)
+
+                    // Move o GIF na tela (Centralizando pelo meio da imagem)
+                    if(this.el) {
+                        this.el.style.transform = `translate(${this.x - 300}px, ${this.y - 200}px) rotate(${this.angle}rad)`;
+                    }
+                    // Rastro de fogo saindo do rabo do dragão
+                    if(frameCount % 3 === 0) particles.push(new Particle(this.x, this.y, '#f30', (Math.random()-0.5)*5, (Math.random()-0.5)*5, 20, 'fire'));
+                }
+                return true;
+            }
+            draw(ctx) {
+                // Deixamos vazio, pois o HTML e o CSS cuidam do desenho agora!
+            }
+        }
+
+        window.blackHoles = [];
+        class BlackHole {
+            constructor(ownerId) {
+                this.x = window.innerWidth / 2;
+                this.y = window.innerHeight / 2;
+                this.ownerId = ownerId;
+                this.life = 7 * 60; // ⏳ Fica ativo por 7 segundos
+                this.angle = 0;
+
+                // 🌑 Criando o Buraco Negro gigante por cima da Arena
+                this.el = document.createElement('img');
+                this.el.src = 'assets_jogo/imagens/saw_blade_dementor.webp';
+                this.el.style.position = 'absolute';
+                this.el.style.width = '700px';  // 👈 Bem grande cobrindo a tela
+                this.el.style.height = '700px';
+                this.el.style.zIndex = '5400';
+                this.el.style.pointerEvents = 'none';
+                this.el.style.transformOrigin = 'center center';
+                // CSS para dar o aspecto de rastro negro e distorção cósmica
+                this.el.style.filter = 'drop-shadow(0 0 40px #000) brightness(0.15) saturate(200%)';
+                document.getElementById('arena').appendChild(this.el);
+
+                let voidSnd = new Audio('assets_jogo/audios/collision_void_sfx.mp3');
+                voidSnd.volume = window.globalVolSFX; voidSnd.play().catch(()=>{});
+            }
+            update() {
+                this.life--;
+                if(this.life <= 0) {
+                    if(this.el) this.el.remove();
+                    return false;
+                }
+
+                this.angle += 0.015; // 🌀 Girando devagar conforme solicitado
+                if(this.el) {
+                    this.el.style.transform = `translate(${this.x - 350}px, ${this.y - 350}px) rotate(${this.angle}rad)`;
+                }
+
+                // 🌌 GRAVIDADE DO HORIZONTE DE EVENTOS
+                balls.forEach(b => {
+                    let owner = balls.find(o => o.id === this.ownerId);
+                    let isAlly = (b.teamId && owner && b.teamId === owner.teamId);
+
+                    if(b.id !== this.ownerId && b.hp > 0 && !isAlly) {
+                        let dx = this.x - (b.x + 50);
+                        let dy = this.y - (b.y + 50);
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+
+                        if(dist < 80) {
+                            // 💀 REAL HITKILL: Entrou totalmente no buraco negro, morre na hora!
+                            b.die(this.ownerId);
+                            floatingTexts.push(new FloatingText(this.x, this.y - 50, "🌑 CONSUMIDO!", "#4b0082"));
+                        } else if(dist < 550) {
+                            // 🏋️ LÓGICA DE PESO: Tiers mais altos resistem mais. Proximidade aumenta a força!
+                            let peso = 1 + (b.powerTier * 1.2);
+                            let forcaAtracao = (1200 / dist) / peso;
+
+                            b.vx += (dx / dist) * forcaAtracao;
+                            b.vy += (dy / dist) * forcaAtracao;
+
+                            // Cria partículas pretas sendo sugadas das bolinhas
+                            if(frameCount % 10 === 0) {
+                                particles.push(new Particle(b.x+50, b.y+50, '#000', (dx/dist)*8, (dy/dist)*8, 15, 'normal'));
+                            }
+                        }
+                    }
+                });
+                return true;
+            }
+            draw(ctx) {}
+        }
+
+        class Shockwave {
+            constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.radius=0; this.life=40; }
+            update() { this.radius += 40; this.life--; return this.life > 0; }
+            draw(ctx) { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.strokeStyle = this.color; ctx.lineWidth = 15*(this.life/40); ctx.stroke(); }
+        }
+
+        class Projectile {
+            constructor(x, y, target, type, assetUrl, ownerId, shotMult = 1) {
+                this.x = x; this.y = y; this.target = target; this.type = type; this.ownerId = ownerId;
+                this.speed = (type === 'void' || type === 'shock') ? 16 : 10;
+                this.angle = 0; this.img = new Image(); this.img.src = assetUrl;
+                this.shotMult = shotMult; // Guarda a força multiplicadora do tiro!
+            }
+            update() {
+                if(!this.target || this.target.hp <= 0) return false;
+                let tx = this.target.x + 50; let ty = this.target.y + 50;
+                let dx = tx - this.x; let dy = ty - this.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 40) { this.applyEffect(); return false; }
+                this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed;
+
+                // 🌀 Redondos giram soltos. O de Veneno (Poison) fica fixo olhando pro alvo!
+                if(this.type === 'poison' || this.type === 'poison_tick') {
+                    this.angle = Math.atan2(dy, dx);
+                } else {
+                    this.angle += 0.25; // Efeito giratório contínuo
+                }
+                if (this.type === 'poison' || this.type === 'poison_tick') particles.push(new Particle(this.x, this.y, '#0f0', 0, 0, 15, 'normal'));
+                if (this.type === 'ice') particles.push(new Particle(this.x, this.y, '#0ff', 0, 0, 15, 'ice'));
+                if (this.type === 'fire') particles.push(new Particle(this.x, this.y, '#f30', 0, 0, 15, 'fire'));
+                if (this.type === 'plasma') particles.push(new Particle(this.x, this.y, '#b200ff', 0, 0, 20, 'normal'));
+                return true;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+                let scale = 50; if(this.type === 'shock' || this.type === 'void') scale = 30;
+
+                let baseFilter = '';
+                if (this.type === 'ice') baseFilter = 'hue-rotate(180deg) saturate(200%)';
+                if (this.type === 'plasma') baseFilter = 'hue-rotate(270deg) drop-shadow(0 0 10px #0088ff)';
+                if (this.type === 'angelic') baseFilter = 'brightness(1.5) drop-shadow(0 0 20px #ffcc00)';
+                if (this.type === 'void_tick') baseFilter = 'hue-rotate(270deg) saturate(300%) brightness(0.3) drop-shadow(0 0 15px #330066)';
+
+                // ✨ EFEITO DE EMPODERAMENTO: Quanto maior o nível do tiro, mais brilhante!
+                if (this.shotMult > 1) {
+                    baseFilter += ` saturate(${100 + this.shotMult * 20}%) brightness(${1 + (this.shotMult * 0.15)}) drop-shadow(0 0 ${10 + this.shotMult * 2}px white)`;
+                }
+                if (baseFilter !== '') ctx.filter = baseFilter;
+
+                ctx.drawImage(this.img, -scale/2, -scale/2, scale, scale); ctx.restore();
+            }
+            applyEffect() {
+                let pColor = '#fff';
+                let dmgMult = 1;
+                let owner = balls.find(b => b.id === this.ownerId);
+                let ownerLvl = owner ? (owner.powerTier || 1) : 1;
+                let targetLvl = this.target.powerTier || 1;
+                let diff = ownerLvl - targetLvl;
+
+                // ⚖️ VANTAGEM DE HIERARQUIA REVISADA:
+                // Mesmo nível = 1.0x (Dano Base)
+                // Mais forte batendo no mais fraco (+30% de dano extra por nível de diferença)
+                // Mais fraco batendo no mais forte (Dano cai drasticamente, mínimo de 10% do dano original)
+                if (diff > 0) dmgMult = 1 + (diff * 0.30);
+                else if (diff < 0) dmgMult = Math.max(0.10, 1 + (diff * 0.25));
+
+                let powerMultiplier = 1 + ((this.shotMult - 1) * 0.30);
+                let qtyMult = (this.shotMult > 1) ? this.shotMult * 2 : 1;
+                let finalDmgMult = (dmgMult * powerMultiplier) / qtyMult;
+                let textMult = (dmgMult * powerMultiplier);
+
+                // % da vida padrão que CADA projétil vai arrancar (A maioria atira 6 de uma vez)
+                let basePct = 0;
+
+                // ⚙️ TIER 1 & 4 (Normal e Diamante)
+                if (this.type === 'normal' || this.type === 'basic') {
+                    pColor = '#ccc'; basePct = (ownerLvl >= 4) ? 1.8 : 0.5; // T1 = 3% máx, T4 = 10.8% máx
+                }
+                // ☣️ TIER 2 (Poison)
+                else if (this.type === 'poison') {
+                    pColor = '#0f0'; basePct = 0.8;
+                    this.target.applyActiveStatus('poison_active', this.ownerId);
+                    floatingTexts.push(new FloatingText(this.target.x+50, this.target.y, "VENENO!", pColor));
+                }
+                else if (this.type === 'poison_tick') {
+                    pColor = '#0f0'; basePct = 2.0; // Dano ao longo do tempo
+                    floatingTexts.push(new FloatingText(this.target.x+50, this.target.y, `☠️`, pColor));
+                }
+                // ❄️ TIER 3 (Ice)
+                else if (this.type === 'ice' || this.type === 'ice_tick') {
+                    pColor = '#0ff'; basePct = 1.2; // 6x1.2 = 7.2%
+                    this.target.applyActiveStatus('frozen', this.ownerId);
+                }
+                // ⚡ TIER 5 (Shock)
+                else if (this.type === 'shock' || this.type === 'shock_tick') {
+                    pColor = '#ff0'; basePct = 2.4; // 6x2.4 = 14.4%
+                    this.target.applyActiveStatus('shock_active', this.ownerId);
+                }
+                // 🩸 TIER 6 (Blood) - ROUBO DE VIDA!
+                else if (this.type === 'blood') {
+                    pColor = '#ff0055'; basePct = 3.0; // 6x3 = 18%
+                    if (owner && owner.hp > 0) {
+                        owner.hp = Math.min(vidaPadrao, owner.hp + (vidaPadrao * 0.01));
+                        if(owner.hpFillEl) owner.hpFillEl.style.setProperty('--hp', Math.max(0, (owner.hp/vidaPadrao)*100) + '%');
+                    }
+                }
+                // 🔥 TIER 7 (Fire)
+                else if (this.type === 'fire') {
+                    pColor = '#f30'; basePct = 1.0; // Metralhadora (Atira 15 vezes, 15x1 = 15% max)
+                    this.target.el.classList.remove('flash-fire'); void this.target.el.offsetWidth; this.target.el.classList.add('flash-fire');
+                }
+                // 💀 TIER 8 (Death)
+                else if (this.type === 'death') {
+                    pColor = '#333'; basePct = 4.0; // 6x4 = 24%
+                }
+                // 🌀 TIER 9 (Plasma)
+                else if (this.type === 'plasma') {
+                    pColor = '#b200ff'; basePct = 5.0; // 6x5 = 30%
+                    this.target.applyActiveStatus('plasma_active', this.ownerId);
+                    this.target.plasmaStacks = 5;
+                }
+                // 🌑 TIER 10 (Void - Direct Hits)
+                else if (this.type === 'void') {
+                    pColor = '#8a2be2'; basePct = 6.0; // 6x6 = 36%
+                    this.target.applyActiveStatus('void_hook', this.ownerId);
+                }
+                else if (this.type === 'void_tick') {
+                    createExplosion(this.x, this.y, '#330066', 'void', 15); return;
+                }
+                // 🌋 TIER 11 (Inferno)
+                else if (this.type === 'inferno') {
+                    pColor = '#ff0000'; basePct = 7.0; // 6x7 = 42%
+                }
+                // 👼 TIER 12 (Angelic)
+                else if (this.type === 'angelic') {
+                    pColor = '#ffcc00'; basePct = 8.0; // 6x8 = 48% (Teto de 50% respeitado!)
+                }
+
+                // 💥 APLICAÇÃO MATEMÁTICA FINAL
+                if (basePct > 0) {
+                    let actualDmg = (vidaPadrao * (basePct / 100)) * finalDmgMult;
+                    this.target.takeDamage(actualDmg, this.ownerId);
+
+                    // Mostra o número apenas 30% das vezes para limpar a tela, ou 100% nas supremas
+                    if (Math.random() > 0.7 || this.type === 'death' || this.type === 'inferno' || this.type === 'angelic') {
+                        let showPct = (basePct * textMult).toFixed(1);
+                        floatingTexts.push(new FloatingText(this.target.x+50, this.target.y, `-${showPct}%`, pColor));
+                    }
+                }
+
+                createExplosion(this.x, this.y, pColor, this.type, 30);
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color) { this.x = x; this.y = y; this.text = text; this.color = color; this.life = 60; this.vy = -1.5; }
+            update() { this.y += this.vy; this.life--; }
+            draw(ctx) {
+                if (this.life <= 0) return;
+                ctx.globalAlpha = this.life / 60; ctx.font = "bold 20px 'Arial Black'"; ctx.fillStyle = this.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 4; ctx.textAlign = "center";
+                ctx.strokeText(this.text, this.x, this.y); ctx.fillText(this.text, this.x, this.y); ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, vx, vy, life, type) { this.x = x; this.y = y; this.color = color; this.vx = vx; this.vy = vy; this.life = life; this.maxLife = life; this.type = type; this.size = Math.random()*5+2; }
+            update() { this.x += this.vx; this.y += this.vy; this.life--; }
+            draw() { if (this.life <= 0) return; ctx.globalAlpha = this.life / this.maxLife; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0; }
+        }
+
+        function createExplosion(x, y, color, type, amount) {
+            let finalAmount = Math.floor(amount * vfxMult);
+            for(let i=0; i<finalAmount; i++) particles.push(new Particle(x, y, color, (Math.random()-0.5)*15, (Math.random()-0.5)*15, 30+Math.random()*20, type));
+        }
+
+        function spawnPlayer(id, pic, isBot = false) {
+            window.deadTimers = window.deadTimers || {};
+            if(window.deadTimers[id] && (Date.now() - window.deadTimers[id] < 5000)) return; // ⏱️ 5s no cemitério
+
+            if(!balls.find(b => b.id === id)) { balls.push(new Ball(id, pic, isBot)); atualizarPainel(); atribuirCamadas(); }
+        }
+
+        function atualizarPainel() { localStorage.setItem('activePlayers', JSON.stringify(balls.map(b => ({id: b.id, pic: b.pic})))); }
+
+        function atribuirCamadas() {
+            balls.sort((a, b) => {
+                let aTemSerra = a.powerLvl > 0 ? 1 : 0; let bTemSerra = b.powerLvl > 0 ? 1 : 0;
+                if (aTemSerra !== bTemSerra) return bTemSerra - aTemSerra;
+                return b.lastActiveTs - a.lastActiveTs;
+            });
+            balls.forEach((b, index) => {
+                if (index < 30) b.layer = 1; else if (index < 60) b.layer = 2; else b.layer = 3;
+                if (b.layer === 1) { b.el.style.display = 'flex'; b.el.style.zIndex = 15; b.el.style.filter = 'none'; b.el.style.opacity = '1'; }
+                else if (b.layer === 2) { b.el.style.display = 'flex'; b.el.style.zIndex = 10; b.el.style.filter = 'brightness(0.6) blur(2px)'; b.el.style.opacity = '0.7'; }
+                else { b.el.style.display = 'none'; }
+            });
+        }
+
+        function triggerHitEffect(ballA, ballB, collX, collY) {
+            let maxLvl = Math.max(ballA.powerTier || 1, ballB.powerTier || 1);
+            let soundFile = 'assets_jogo/audios/collision_impact_sfx.mp3';
+
+            // 🔊 TOCA O EFEITO SONORO
+            let now = Date.now(); let canPlaySound = false;
+            if (isX1Active) { canPlaySound = true; }
+            else {
+                let aTempo = ballA.lastSoundTs || 0; let bTempo = ballB.lastSoundTs || 0;
+                if (now - aTempo > 2000 && now - bTempo > 2000) { canPlaySound = true; ballA.lastSoundTs = now; ballB.lastSoundTs = now; }
+            }
+            if (canPlaySound && musicStarted) {
+                let hitSnd = new Audio(soundFile);
+                hitSnd.volume = Math.min(1.0, 0.5 + (maxLvl * 0.1)) * window.globalVolSFX;
+                hitSnd.play().catch(()=>{});
+            }
+
+            // ✨ EFEITO VISUAL LIMITADO
+            if (maxLvl >= 5 && ballA.activeStatus !== 'frozen' && ballB.activeStatus !== 'frozen') {
+                let qtdParticulas = 15 + (maxLvl * 5);
+                let pColor = POWER_ASSETS[maxLvl] ? POWER_ASSETS[maxLvl].color : "#fff";
+                let pType = POWER_ASSETS[maxLvl] ? POWER_ASSETS[maxLvl].type : "normal";
+                createExplosion(collX, collY, pColor, pType, qtdParticulas);
+            }
+        }
+
+        window.teamsInfo = {}; const TEAM_COLORS = ['#ff0055', '#00ffaa', '#ffaa00', '#aa00ff', '#00aaff', '#ff0000']; const TEAM_EMOJIS = ['🐺','🦁','🦅','🐉','🐍','🦈']; let teamCounter = 0;
+
+        window.playerTeams = window.playerTeams || {};
+        function processarComandoTime(atirador, alvo, acao) {
+            if (acao === 'sair_proprio') {
+                if(atirador.teamId) {
+                    atirador.teamId = null; atirador.isLeader = false; delete window.playerTeams[atirador.id];
+                    floatingTexts.push(new FloatingText(atirador.x, atirador.y, "🚪 SAIU DO TIME!", "#ff0000"));
+                }
+                return;
+            }
+            if(acao === 'entra') {
+                if(!atirador.teamId && !alvo.teamId) {
+                    let tId = 'team_' + teamCounter++;
+                    atirador.teamId = tId; alvo.teamId = tId; atirador.isLeader = true; alvo.isLeader = false;
+                    window.teamsInfo[tId] = { color: TEAM_COLORS[teamCounter%TEAM_COLORS.length], emoji: TEAM_EMOJIS[teamCounter%TEAM_EMOJIS.length] };
+                    window.playerTeams[atirador.id] = { id: tId, leader: true }; window.playerTeams[alvo.id] = { id: tId, leader: false };
+                    floatingTexts.push(new FloatingText(atirador.x, atirador.y, "🤝 TIME CRIADO!", window.teamsInfo[tId].color));
+                } else if(atirador.teamId && atirador.isLeader && !alvo.teamId) {
+                    alvo.teamId = atirador.teamId; alvo.isLeader = false; window.playerTeams[alvo.id] = { id: atirador.teamId, leader: false };
+                    floatingTexts.push(new FloatingText(alvo.x, alvo.y, "🤝 RECRUTADO!", window.teamsInfo[atirador.teamId].color));
+                } else if (!atirador.isLeader) {
+                    floatingTexts.push(new FloatingText(atirador.x, atirador.y, "❌ SÓ O LÍDER RECRUTA!", "#ff3300"));
+                }
+            } else if(acao === 'sai') {
+                if(atirador.teamId && atirador.isLeader && alvo.teamId === atirador.teamId && !alvo.isLeader) {
+                    alvo.teamId = null; alvo.isLeader = false; delete window.playerTeams[alvo.id];
+                    floatingTexts.push(new FloatingText(alvo.x, alvo.y, "👢 EXPULSO!", "#ff0000"));
+                }
+            }
+        }
+
+
+        class Ball {
+            constructor(id, pic, isBot = false) {
+                this.id = id; this.pic = pic; this.isBot = isBot;
+                this.x = window.innerWidth/2; this.y = window.innerHeight/2; this.vx = (Math.random()-0.5)*10; this.vy = (Math.random()-0.5)*10;
+                this.hp = vidaPadrao;
+                this.powerLvl = 0;     // Vamos manter pro código velho não quebrar ainda
+                this.powerTier = 0;    // A Categoria da Serra (1 a 12)
+                this.powerSub = 1;     // O Nível da Serra (1, 2 ou 3)
+                this.scale = 1; this.activeStatus = null; this.statusTimer = 0; this.statusOwner = null;
+                this.plasmaStacks = 0; this.fireMode = null; this.infernoMode = null;
+                this.kills = 0; this.lastActiveTs = Date.now(); this.layer = 1;
+                this.coins = 0; // 💰 CARTEIRA
+                this.shieldTimer = 0; this.shieldLevel = 0; // 🛡️ SISTEMA DE ESCUDO
+                this.hideAvatarTimer = 0;
+
+                // 🛡️ Proxy de Imagem: Garante que NUNCA ficará círculo preto.
+                let proxyPic = this.pic ? 'https://wsrv.nl/?url=' + encodeURIComponent(this.pic) + '&w=100&h=100&fit=cover' : 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(this.id);
+
+                this.el = document.createElement("div"); this.el.className = "follower-container";
+
+                this.likes = 0; // 🎯 Contador de Taps
+                window.playerTeams = window.playerTeams || {}; let myTeam = window.playerTeams[this.id];
+                this.teamId = myTeam ? myTeam.id : null; this.isLeader = myTeam ? myTeam.leader : false;
+
+                // 🛡️ HTML com Ícones de Ticket, Tag de Time e ESCUDO ANIMADO
+                this.el.innerHTML = `
+                    <div class="team-tag"></div>
+                    <div class="follower-ball" style="--hp: 100%; --pw: 0%;">
+                        <div class="serra-effect"></div>
+                        <div class="shield-wrapper" style="display:none; position:absolute; inset:-20px; z-index:38;">
+                            <div class="shield-ring" style="width:100%; height:100%; border-radius:50%; border:3px dashed #fff; animation: spin 3s linear infinite;"></div>
+                            <div class="shield-counter" style="position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); background:#000; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:bold; border:1px solid #fff; white-space:nowrap;">🛡️ 1</div>
+                        </div>
+                        <img src="${proxyPic}" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(this.id)}'">
+                        <div class="team-ring"></div> <div class="inner-name">${this.id.substring(0, 10)}</div>
+                        <div class="ticket-icons"><span class="t-x1" style="display:none">🎫</span><span class="t-pwr" style="display:none">⚡</span></div>
+                    </div>
+                `;
+                this.ballEl = this.el.querySelector('.follower-ball');
+                this.serraEl = this.el.querySelector('.serra-effect');
+                this.hpFillEl = this.ballEl;
+                this.teamRingEl = this.el.querySelector('.team-ring');
+
+                this.shieldWrapper = this.el.querySelector('.shield-wrapper');
+                this.shieldRing = this.el.querySelector('.shield-ring');
+                this.shieldCounter = this.el.querySelector('.shield-counter');
+
+                arena.appendChild(this.el);
+
+
+            }
+
+            getUnlockedStates() {
+                let states = [];
+                let fLevel = this.followerLevel || 1;
+
+                // 📊 NOVAS METAS DE TAPS (Tiers Difíceis, Skins Fáceis com +50 Taps)
+                const SUBLEVEL_TAPS = {
+                    1: { 1: 250, 2: 300 },
+                    2: { 1: 1000, 2: 1550, 3: 1600 },
+                    3: { 1: 2000, 2: 2050 },
+                    4: { 1: 3000, 2: 3050 },
+                    5: { 1: 5500, 2: 5550 },
+                    6: { 1: 7500, 2: 7550 },
+                    7: { 1: 9000, 2: 9050 },
+                    8: { 1: 15000 },
+                    9: { 1: 0, 2: 50, 3: 100 }, // Plasma (skins com +50)
+                    10: { 1: 0 }, // Void
+                    11: { 1: 0 }, // Inferno
+                    12: { 1: 0, 2: 50 } // Anjo (Lvl 2 é a Coroa, com +50)
+                };
+
+                for (let t = 1; t <= 12; t++) {
+                    let cost = custosPoderes['p'+t] || 10000;
+                    let coinUnlocked = (this.coins >= cost);
+                    let tapUnlockedBase = (t <= 8 && this.likes >= SUBLEVEL_TAPS[t][1]);
+
+                    // O jogador acessa este Tier se comprou OU se tem taps suficientes (até T8)
+                    if (coinUnlocked || tapUnlockedBase) {
+                        let maxSubAssets = POWER_ASSETS[t] ? Object.keys(POWER_ASSETS[t].levels).length : 1;
+
+                        let fanSub = 1;
+                        if (fLevel >= 5 && fLevel <= 14 && maxSubAssets >= 2) fanSub = 2;
+                        if (fLevel >= 15) fanSub = (maxSubAssets >= 3) ? 3 : (maxSubAssets === 2 ? 2 : 1);
+
+                        // Mapeia todas as Skins (Subníveis) destravadas dentro desse Tier
+                        for (let s = 1; s <= maxSubAssets; s++) {
+                            let tapReq = SUBLEVEL_TAPS[t][s] || 999999;
+                            let tapUnlockedSub = (this.likes >= tapReq);
+                            let vipUnlockedSub = (s <= fanSub);
+
+                            // Nível 1 sempre vem liberado se o Tier foi ganho. Nível 2+ exige Taps ou VIP!
+                            if (s === 1 || tapUnlockedSub || vipUnlockedSub) {
+                                states.push({ t: t, s: s });
+                            }
+                        }
+                    }
+                }
+                return states;
+            }
+
+            checkUpgrades() {
+                let states = this.getUnlockedStates();
+                if (states.length === 0) return; // Mão limpa
+
+                let currentIndex = states.length - 1; // Posição máxima atual na mochila
+                let highestState = states[currentIndex]; // Status absoluto no topo
+
+                // O jogador conquistou um item inédito para a mochila dele!
+                if (currentIndex > (this.maxUnlockedIndex || -1)) {
+                    let oldIndex = this.maxUnlockedIndex || -1;
+                    this.maxUnlockedIndex = currentIndex;
+
+                    let ammoGain = 0;
+                    let isNewTier = false;
+
+                    // ⚡ RECOMPENSA DE MUNIÇÃO AJUSTADA (3 por Serra, 1 por Skin)
+                    for(let i = oldIndex + 1; i <= currentIndex; i++) {
+                        if (states[i].s === 1) { ammoGain += 3; isNewTier = true; } // Exatamente 3 munições na Serra!
+                        else { ammoGain += 1; } // Apenas 1 munição extra nas skins
+                    }
+
+                    // Força a equipar o novo item destravado
+                    this.setPower(highestState.t, highestState.s);
+
+                    // 💚 Mantém a cura de 50%
+                    this.hp = Math.min(vidaPadrao, this.hp + (vidaPadrao * 0.5));
+                    if(this.hpFillEl) this.hpFillEl.style.setProperty('--hp', Math.max(0, (this.hp/vidaPadrao)*100) + '%');
+                    this.hideAvatarTimer = 300;
+
+                    if (isNewTier && highestState.t === 12) floatingTexts.push(new FloatingText(this.x+50, this.y, "👼 ASCENSÃO DIVINA!", "#ffcc00"));
+
+                    window.chargedPowers[this.id] = (window.chargedPowers[this.id] || 0) + ammoGain;
+                    localStorage.setItem('charged_powers', JSON.stringify(window.chargedPowers));
+
+                    let txtAviso = isNewTier ? `⚡ +${ammoGain} MUNIÇÕES!` : `✨ SKIN LV.${highestState.s}! (+${ammoGain} ⚡)`;
+                    floatingTexts.push(new FloatingText(this.x+50, this.y, txtAviso, isNewTier ? "#0ff" : "#0f0"));
+
+                    atualizarPainel();
+                }
+            }
+            setPower(tier, subLevel = 1) {
+                this.powerLvl = tier; // Retrocompatibilidade
+                this.powerTier = tier;
+                this.powerSub = subLevel;
+
+                if(this.ballEl) this.ballEl.className = (tier === 12) ? `follower-ball is-angelic` : `follower-ball aura-p${tier}`;
+
+                if(tier > 0 && POWER_ASSETS[tier] && POWER_ASSETS[tier].levels[subLevel] && this.serraEl) {
+                    this.serraEl.style.display = 'block';
+                    let imgFileName = POWER_ASSETS[tier].levels[subLevel].img;
+                    this.serraEl.style.backgroundImage = `url('assets_jogo/imagens/${imgFileName}')`;
+
+                    // Ajusta a cor da sombra do anel pelo CSS diretamente baseado no Tier
+                    this.ballEl.style.boxShadow = `0 0 ${20 + (tier*5)}px 5px ${POWER_ASSETS[tier].color}`;
+
+                    if(tier === 12) {
+                        // 👼 Serra Angelical (Tier 12): Majestosa e Gigante
+                        this.serraEl.style.width = '260%'; this.serraEl.style.height = '260%';
+                        this.serraEl.style.top = '-80%'; this.serraEl.style.left = '-80%';
+                    } else {
+                        // ⚙️ Crescimento Progressivo das lâminas por Tier
+                        let tamanhoSerra = 130 + (tier * 10);
+                        let recuo = -((tamanhoSerra - 100) / 2);
+
+                        this.serraEl.style.width = tamanhoSerra + '%';
+                        this.serraEl.style.height = tamanhoSerra + '%';
+                        this.serraEl.style.top = recuo + '%';
+                        this.serraEl.style.left = recuo + '%';
+                    }
+                } else {
+                    // 📭 Tier 0 ou Inválido: Remove a lâmina e a aura completamente
+                    if(this.serraEl) this.serraEl.style.display = 'none';
+                    if(this.ballEl) this.ballEl.style.boxShadow = 'none';
+                }
+
+                this.scale = (tier === 12) ? 2.5 : (1 + (tier * 0.1));
+            }
+
+            applyActiveStatus(type, ownerId) {
+                this.clearActiveStatus();
+                this.activeStatus = type; this.statusOwner = ownerId;
+                if(type === 'frozen') { this.statusTimer = 12 * 60; this.maxStatusTimer = 12 * 60; this.el.classList.add('status-frozen'); }
+                if(type === 'poison_active') { this.statusTimer = 15 * 60; this.maxStatusTimer = 15 * 60; this.el.classList.add('status-poison_active'); } // ☠️ Dura 15 segundos
+                if(type === 'shock_active') { this.statusTimer = 45 * 60; this.maxStatusTimer = 45 * 60; this.el.classList.add('status-shock_active'); }
+                if(type === 'plasma_active') { this.el.classList.add('status-plasma_active'); }
+                if(type === 'void_hook') { this.statusTimer = 5 * 60; this.maxStatusTimer = 5 * 60; this.el.classList.add('status-void'); }
+            }
+
+            clearActiveStatus() {
+                this.activeStatus = null; this.plasmaStacks = 0;
+                this.el.className = "follower-container";
+            }
+
+            // 👇 INÍCIO DA FÍSICA (COLE ISTO AQUI) 👇
+            updatePhysics() {
+                if(this.hp <= 0) return;
+
+                // 👻 TIMER DO AVATAR ESCONDIDO (Transição de Serra)
+                if(this.hideAvatarTimer > 0) this.hideAvatarTimer--;
+
+                // 👻 CONTROLE DE VISIBILIDADE DA FOTO DO JOGADOR
+                let imgEl = this.el.querySelector('img');
+                if (imgEl && this.powerTier !== 12) { // A Angelical (12) é sempre escondida via CSS
+                    if (window.globalHideAvatars || this.hideAvatarTimer > 0) {
+                        imgEl.style.display = 'none';
+                    } else {
+                        imgEl.style.display = 'block';
+                    }
+                }
+
+                // 🌪️ APOCALIPSE ATIVO: Sugados para a luz!
+                if (window.isFinalJudgmentActive && this.powerTier !== 12 && this.hp > 0) {
+                    this.layer = 1; this.el.style.zIndex = 20; // Sobrepõe o fundo branco
+                    let dx = window.innerWidth/2 - (this.x + 50);
+                    let dy = (window.innerHeight/2 - 150) - (this.y + 50); // Puxa para o céu
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 10) { this.x += (dx/dist) * 12; this.y += (dy/dist) * 12; }
+                    this.scale *= 0.98; // Encolhe ao entrar na luz
+                    this.el.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale})`;
+                    return; // Estão indefesos, pula a física normal
+                }
+
+                // TIMER DE STATUS NEGATIVOS
+                if(this.statusTimer > 0) {
+                    this.statusTimer--;
+                    if(this.statusTimer <= 0) this.clearActiveStatus();
+                }
+
+                // FÍSICA DE MOVIMENTO E EFEITOS
+                if(this.activeStatus === 'frozen') {
+                    this.vx = 0; this.vy = 0;
+                } else {
+                    let spdMult = window.globalSpeedMult;
+                    if(this.activeStatus === 'shock_active') { this.vx += (Math.random()-0.5)*2; this.vy += (Math.random()-0.5)*2; spdMult = 0.5; }
+
+                    // GRAVIDADE DO VAZIO (🌑)
+                        if(this.activeStatus === 'void_hook' && this.statusOwner) {
+                            let owner = balls.find(b => b.id === this.statusOwner);
+                            if(owner) {
+                                let myRank = this.powerTier || 1;
+                                let basePull = 0.5;
+                                if (myRank <= 3) basePull = 1.2; // Fracos voam rápido
+                                if (myRank >= 7) basePull = 0.15; // Fortes resistem
+                                let dx = (owner.x + 50) - (this.x + 50); let dy = (owner.y + 50) - (this.y + 50);
+                                let dist = Math.sqrt(dx*dx + dy*dy);
+                                if(dist > 50) { this.vx += (dx/dist) * basePull; this.vy += (dy/dist) * basePull; }
+                                if(frameCount % 60 === 0) projectiles.push(new Projectile(owner.x+50, owner.y+50, this, 'void_tick', '', owner.id, 1));
+                            } else { this.clearActiveStatus(); }
+                        }
+
+                        // 🚀 MOTOR V8: IMPEDE QUE A ARENA PARE (Gerenciador de Energia)
+                        let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                        if (speed === 0) { this.vx = 3; this.vy = 3; speed = 4.24; } // Acorda bolinhas congeladas
+                        if (speed < 4) {
+                            // Se a velocidade for menor que 4, acelera à força
+                            this.vx = (this.vx / speed) * 4;
+                            this.vy = (this.vy / speed) * 4;
+                        } else if (speed > 15) {
+                            // Se bater forte demais, limita para não sumir da tela
+                            this.vx = (this.vx / speed) * 15;
+                            this.vy = (this.vy / speed) * 15;
+                        }
+
+                        // Aplica o movimento final
+                        this.x += this.vx * spdMult;
+                        this.y += this.vy * spdMult;
+
+                    let radius = 50 * this.scale;
+                    if(this.x <= 0) { this.x = 0; this.vx *= -1; }
+                    if(this.x >= window.innerWidth - radius*2) { this.x = window.innerWidth - radius*2; this.vx *= -1; }
+                    if(this.y <= 0) { this.y = 0; this.vy *= -1; }
+                    if(this.y >= window.innerHeight - radius*2) { this.y = window.innerHeight - radius*2; this.vy *= -1; }
+                }
+
+                // DANO DE VENENO ETERNO
+                if(this.activeStatus === 'poison_active' && frameCount % 60 === 0) {
+                    projectiles.push(new Projectile(this.x+50, this.y+50, this, 'poison_tick', '', this.statusOwner, 1));
+                }
+
+                // 🔥 MÁQUINAS DE TIRO CONTÍNUO (Intercalando Projéteis)
+                if (this.fireMode && this.fireMode.ticks > 0) {
+                    if (frameCount % 4 === 0) {
+                        let shotM = this.fireMode.shotMult || 1;
+                        this.fireMode.count++;
+                        // Intercala entre os dois assets a cada tiro
+                        let assetIntercalado = (this.fireMode.count % 2 === 0) ? 'energy_orb_styled.webp' : 'energy_orb.webp';
+
+                        projectiles.push(new Projectile(this.x+50, this.y+50, this.fireMode.target, 'fire', `assets_jogo/imagens/${assetIntercalado}`, this.id, shotM, false));
+                        this.fireMode.ticks--;
+                    }
+                }
+                if (this.infernoMode && this.infernoMode.ticks > 0) {
+                    if (frameCount % 6 === 0) {
+                        let shotM = this.infernoMode.shotMult || 1;
+                        let type = (Math.random() > 0.5) ? 'fire' : 'plasma';
+                        let asset = (type === 'fire') ? 'assets_jogo/imagens/saw_blade_styled.webp' : 'assets_jogo/imagens/energy_orb.webp';
+                        projectiles.push(new Projectile(this.x+50, this.y+50, this.infernoMode.target, type, asset, this.id, shotM));
+                        this.infernoMode.ticks--;
+                    }
+                }
+                if (this.angelicMode && this.angelicMode.ticks > 0) {
+                    if (frameCount % 10 === 0) {
+                        let shotM = this.angelicMode.shotMult || 1;
+                        let asset = (this.angelicMode.ticks % 2 === 0) ? 'assets_jogo/imagens/energy_orb.webp' : 'assets_jogo/imagens/energy_orb_styled.webp';
+                        balls.forEach(tgt => {
+                            // O Anjo não atira nos próprios aliados do time!
+                            if (tgt.id !== this.id && tgt.hp > 0 && !tgt.isBot && (!this.teamId || tgt.teamId !== this.teamId)) {
+                                projectiles.push(new Projectile(this.x+50, this.y+50, tgt, 'angelic', asset, this.id, shotM));
+                            }
+                        });
+                        this.angelicMode.ticks--;
+                    }
+                }
+
+                // 🤝 ATUALIZA VISUAL DO TIME (Tags, Emojis e Anel Colorido)
+                let tagEl = this.el.querySelector('.team-tag');
+                if (this.teamId && window.teamsInfo[this.teamId]) {
+                    let info = window.teamsInfo[this.teamId];
+                    let coroa = this.isLeader ? "👑" : "";
+                    if (tagEl) {
+                        tagEl.innerHTML = `<span style="color:${info.color}">${info.emoji}${coroa}</span>`;
+                        tagEl.style.display = 'block';
+                    }
+                    if (this.teamRingEl) {
+                        this.teamRingEl.style.border = `4px solid ${info.color}`;
+                        this.teamRingEl.style.boxShadow = `0 0 12px ${info.color}`;
+                    }
+                } else {
+                    if (tagEl) { tagEl.innerHTML = ''; tagEl.style.display = 'none'; }
+                    if (this.teamRingEl) { this.teamRingEl.style.border = 'none'; this.teamRingEl.style.boxShadow = 'none'; }
+                }
+
+                // 🛡️ ATUALIZA VISUAL DO ESCUDO
+                if (this.shieldLevel > 0) {
+                    this.shieldWrapper.style.display = 'block';
+                    let sColor = POWER_ASSETS[this.powerTier] ? POWER_ASSETS[this.powerTier].color : "#fff";
+                    this.shieldRing.style.borderColor = sColor;
+                    this.shieldCounter.style.color = sColor;
+                    this.shieldCounter.style.borderColor = sColor;
+                    this.shieldCounter.innerText = `🛡️ Lv.${Math.ceil(this.shieldLevel)}`;
+                } else {
+                    this.shieldWrapper.style.display = 'none';
+                }
+
+                this.el.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale})`;
+            }
+            // 👆 FIM DA FÍSICA 👆
+
+            takeDamage(dmg, attackerId, ignoreShield = false) {
+                // 🛡️ FOGO AMIGO ZERO: Ignora 100% do dano se for aliado
+                if (attackerId && this.teamId && attackerId !== this.id) {
+                    let attacker = balls.find(b => b.id === attackerId);
+                    if (attacker && attacker.teamId === this.teamId) return;
+                }
+
+                // 🛡️ LÓGICA DE ESCUDO HIERÁRQUICO
+                if (!ignoreShield && this.shieldLevel > 0 && attackerId) {
+                    let attacker = balls.find(b => b.id === attackerId);
+                    let atkLvl = attacker ? (attacker.powerTier || 1) : 1;
+                    let defLvl = this.powerTier || 1;
+                    let diff = atkLvl - defLvl;
+
+                    let shieldDmg = 0.5;
+
+                    if (diff <= -2) shieldDmg = 0.25;
+                    else if (diff === -1) shieldDmg = 0.34;
+                    else if (diff === 1) shieldDmg = 0.75;
+                    else if (diff >= 2) shieldDmg = diff - 1;
+
+                    this.shieldLevel -= shieldDmg;
+
+                    if (this.shieldLevel <= 0) {
+                        this.shieldLevel = 0;
+                        floatingTexts.push(new FloatingText(this.x+50, this.y, "🛡️ QUEBRADO!", "#ff3300"));
+                        dmg = dmg * 0.5; // Absorve metade do hit fatal
+                    } else {
+                        let sColor = POWER_ASSETS[this.powerTier] ? POWER_ASSETS[this.powerTier].color : "#fff";
+                        floatingTexts.push(new FloatingText(this.x+50, this.y, `🛡️ BLOQUEOU`, sColor));
+                        return;
+                    }
+                }
+
+                this.hp -= dmg;
+
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    if(this.hpFillEl) this.hpFillEl.style.setProperty('--hp', '0%');
+                    this.die(attackerId);
+                } else {
+                    if(this.hpFillEl) this.hpFillEl.style.setProperty('--hp', Math.max(0, (this.hp/vidaPadrao)*100) + '%');
+                }
+            }
+
+            die(attackerId) {
+                this.el.remove(); balls = balls.filter(b => b.id !== this.id);
+                createExplosion(this.x, this.y, '#fff', 'normal', 50); atualizarPainel(); atribuirCamadas();
+                if (!this.isBot) localStorage.setItem('playerDied', this.id + '_' + Date.now());
+                if (attackerId && attackerId !== this.id) {
+                    let killer = balls.find(b => b.id === attackerId);
+                    if (killer && !killer.isBot) { localStorage.setItem('registerKill', attackerId + '_' + Date.now()); killer.kills++; }
+                }
+                window.deadTimers = window.deadTimers || {}; window.deadTimers[this.id] = Date.now(); // ⏱️ Registra hora da morte
+
+            }
+        }
+
+        // 🔄 LOOP PRINCIPAL: LÊ OS COMANDOS DO PAINEL APENAS UMA VEZ
+        function processarComandosDoPainel() {
+            let cfgStr = localStorage.getItem('hostConfig');
+            if (cfgStr) {
+                let cfg = JSON.parse(cfgStr);
+                if(cfg.bgArena && cfg.bgArena !== window.currentBgArena) { document.body.style.backgroundImage = `url('${cfg.bgArena}')`; window.currentBgArena = cfg.bgArena; }
+                if(cfg.bgSize && cfg.bgSize !== window.currentBgSize) { document.body.style.backgroundSize = cfg.bgSize + '%'; window.currentBgSize = cfg.bgSize; }
+                if (cfg.volSFX !== undefined) window.globalVolSFX = parseFloat(cfg.volSFX);
+                if (cfg.volume !== undefined) {
+                    let parsedVol = parseFloat(cfg.volume);
+                    if (music) music.volume = parsedVol;
+                    let x1M = document.getElementById("x1Music");
+                    if (x1M) x1M.volume = parsedVol;
+                }
+                if (cfg.musica !== undefined && music) {
+                    if (cfg.musica && music.paused && !isX1Active && gameActive) { music.play().then(() => musicStarted = true).catch(()=>{}); }
+                    else if (!cfg.musica && !music.paused) { music.pause(); musicStarted = false; }
+                }
+                if (cfg.velocidade !== undefined) window.globalSpeedMult = parseFloat(cfg.velocidade);
+                if (cfg.vfxLevel !== undefined) vfxMult = cfg.vfxLevel / 100.0;
+                if (cfg.ocultarAvatares !== undefined) window.globalHideAvatars = cfg.ocultarAvatares;
+                if (cfg.mapaPresentes) mapaPresentesAtivos = cfg.mapaPresentes;
+                if (cfg.custos) custosPoderes = cfg.custos;
+            }
+
+            let cmdStr = localStorage.getItem('manualPower');
+            if(cmdStr) {
+                let cmd = JSON.parse(cmdStr);
+                if(cmd.ts > (window.lastCmdTs || 0)) {
+                    window.lastCmdTs = cmd.ts;
+                    let ball = balls.find(b => b.id === cmd.id); // 🛡️ Acha a bolinha perfeitamente, com ou sem aspas
+                    if(ball) {
+
+                        if(cmd.poder === 'vida') { ball.hp = vidaPadrao; if(ball.hpFillEl) ball.hpFillEl.style.setProperty('--hp', '100%'); }
+                        else { ball.setPower(cmd.poder); }
+                    }
+                }
+            }
+
+            let cmdPwr = localStorage.getItem('cmdGivePower');
+            if(cmdPwr) {
+                let cmd = JSON.parse(cmdPwr);
+                if(cmd.ts > (window.lastGivePowerTs || 0)) {
+                    window.lastGivePowerTs = cmd.ts;
+                    window.chargedPowers[cmd.id] = (window.chargedPowers[cmd.id] || 0) + 1;
+                    localStorage.setItem('charged_powers', JSON.stringify(window.chargedPowers));
+                    let ball = balls.find(b => b.id === cmd.id);
+                    if(ball) floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "⚡ MUNIÇÃO (HOST)!", "#0ff"));
+                    atualizarPainel();
+                }
+            }
+
+            let showRules = localStorage.getItem('showRulesArena') === 'true';
+            let forceShow = window.tempRulesTimer && window.tempRulesTimer > Date.now(); // Cronômetro de 5s do chat
+            let regrasEl = document.getElementById('regras-overlay');
+            if(regrasEl) regrasEl.style.display = (showRules || forceShow) ? 'block' : 'none';
+
+            // 👇 DEVOLVENDO A LEITURA DA VIDA, TEMPO E FORÇAR X1
+            let x1CmdStr = localStorage.getItem('forceX1Event');
+            if(x1CmdStr) { let x1Cmd = JSON.parse(x1CmdStr); if(x1Cmd.ts > (window.lastX1CmdTs || 0)) { window.lastX1CmdTs = x1Cmd.ts; iniciarX1(x1Cmd.p1, x1Cmd.p2); } }
+
+            let updTempo = localStorage.getItem('atualizarTempo');
+            if(updTempo) { let t = JSON.parse(updTempo); if(t.ts > (window.lastTempoTs || 0)) { window.lastTempoTs = t.ts; timeLeft = t.tempo; } }
+
+            let updVida = localStorage.getItem('atualizarVida');
+            if(updVida) {
+                let v = JSON.parse(updVida);
+                if(v.ts > (window.lastVidaTs || 0)) {
+                    window.lastVidaTs = v.ts;
+                    vidaPadrao = v.vida;
+                    // Bônus: Atualiza a vida de quem já está na arena na mesma hora!
+                    balls.forEach(b => { b.hp = vidaPadrao; if(b.hpFillEl) b.hpFillEl.style.setProperty('--hp', '100%'); });
+                }
+            }
+        }
+        setInterval(processarComandosDoPainel, 500);
+
+        setInterval(() => {
+            if(!gameActive || isX1Active) return;
+            if(balls.length < 5) {
+                let bName = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)] + "_" + botIndex++;
+                let bPic = "https://api.dicebear.com/7.x/bottts/png?seed=" + bName;
+                spawnPlayer(bName, bPic, true);
+                let bot = balls.find(b => b.id === bName);
+                if(bot && Math.random() > 0.5) bot.setPower(1);
+            }
+        }, 2500);
+
+        function update() {
+            if(!gameActive) return;
+
+            // 🦺 AIRBAG: Colocamos a chamada do próximo frame AQUI NO TOPO!
+            // Assim, mesmo que o código abaixo dê erro, o motor gráfico nunca para de rodar.
+            requestAnimationFrame(update);
+
+            try {
+                frameCount++;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+
+                // 🎯 CENTRALIZADOR DO OCTÓGONO
+                let shiftedCanvas = false;
+                if (isX1Active) {
+                    ctx.save();
+                    let offsetX = (window.innerWidth - 800) / 2;
+                    let offsetY = (window.innerHeight - 500) / 2;
+                    ctx.translate(offsetX, offsetY);
+                    shiftedCanvas = true;
+                }
+
+                particles = particles.filter(p => p.life > 0);
+                if (particles.length > 150) particles = particles.slice(particles.length - 150);
+
+                window.blackHoles = window.blackHoles.filter(bh => bh.update());
+                particles.forEach(p => { p.update(); p.draw(); });
+                projectiles = projectiles.filter(p => p.update()); projectiles.forEach(p => p.draw(ctx));
+                floatingTexts = floatingTexts.filter(ft => ft.life > 0); floatingTexts.forEach(ft => { ft.update(); ft.draw(ctx); });
+                shockwaves = shockwaves.filter(s => s.update()); shockwaves.forEach(s => s.draw(ctx));
+                dragons = dragons.filter(d => d.update()); dragons.forEach(d => d.draw(ctx));
+
+                if (shiftedCanvas) { ctx.restore(); }
+
+                if(isX1Active) {
+                    atualizarFisicaX1();
+                    return;
+                }
+
+                balls.forEach((ball, i) => {
+                    ball.updatePhysics();
+                    for(let j=i+1; j<balls.length; j++) {
+                        let o = balls[j];
+                        let dx = (o.x + 50*o.scale) - (ball.x + 50*ball.scale);
+                        let dy = (o.y + 50*o.scale) - (ball.y + 50*ball.scale);
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        if (isNaN(dist) || dist === 0) { dx = 1; dy = 1; dist = 1.414; }
+
+                        let minDist = 85 * ball.scale + 85 * o.scale;
+                        if(dist < minDist) {
+                            let nx = dx/dist; let ny = dy/dist; let overlap = minDist - dist;
+
+                            let forcaA = 1 + (ball.powerTier * 2);
+                            let forcaB = 1 + (o.powerTier * 2);
+                            let somaForca = forcaA + forcaB;
+
+                            let recuoA = forcaB / somaForca;
+                            let recuoB = forcaA / somaForca;
+
+                            let deslizeX = (Math.random() - 0.5) * 0.6;
+                            let deslizeY = (Math.random() - 0.5) * 0.6;
+
+                            ball.x -= (nx + deslizeX) * (overlap * recuoA);
+                            ball.y -= (ny + deslizeY) * (overlap * recuoA);
+                            o.x += (nx - deslizeX) * (overlap * recuoB);
+                            o.y += (ny - deslizeY) * (overlap * recuoB);
+
+                            let p = 0.8 * (ball.vx*nx + ball.vy*ny - o.vx*nx - o.vy*ny) / somaForca;
+                            ball.vx -= p * forcaB * nx; ball.vy -= p * forcaB * ny; o.vx += p * forcaA * nx; o.vy += p * forcaA * ny;
+
+                            let isTeammate = (ball.teamId && ball.teamId === o.teamId);
+
+                            if (!isTeammate) {
+                                triggerHitEffect(ball, o, ball.x + 50*ball.scale + nx*(minDist/2), ball.y + 50*ball.scale + ny*(minDist/2));
+
+                                if(ball.activeStatus !== 'shock_active' && o.activeStatus !== 'shock_active') {
+                                    let rankA = ball.powerTier || 1; let rankB = o.powerTier || 1;
+
+                                    let processarColisao = (agressor, vitima, dmgBase) => {
+                                        let dmgExtra = 0;
+                                        if(vitima.activeStatus === 'plasma_active' && vitima.plasmaStacks > 0) {
+                                            dmgExtra = (vidaPadrao * (vitima.plasmaStacks / 100));
+                                            vitima.plasmaStacks--;
+                                            if(vitima.plasmaStacks <= 0) vitima.clearActiveStatus();
+                                        }
+                                        vitima.takeDamage(dmgBase + dmgExtra, agressor.id);
+                                    };
+
+                                    let diff = rankA - rankB;
+                                    if (diff > 0) { processarColisao(ball, o, vidaPadrao * (0.0005 * diff)); }
+                                    else if (diff < 0) { processarColisao(o, ball, vidaPadrao * (0.0005 * Math.abs(diff))); }
+                                    else {
+                                        let basePct = 0.0002 + (rankA * 0.00005);
+                                        processarColisao(ball, o, vidaPadrao * basePct);
+                                        processarColisao(o, ball, vidaPadrao * basePct);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                // Se der qualquer erro bizarro de matemática no jogo, ele só avisa e continua a partida ileso!
+                console.error("🚨 CRASH EVITADO NA ARENA:", err);
+            }
+        }
+
+        let timerInterval = setInterval(() => {
+            if(!gameActive) return;
+
+            // 🐉 ALERTA VISUAL DE ULTIMATE PRONTO (Manual via Chat)
+            balls.forEach(b => {
+                if(b.powerTier >= 11 && !b.isBot) {
+                    let ammo = window.chargedPowers[b.id] || 0;
+                    let custoAmmo = (b.powerTier === 12) ? 14 : 8; // Anjo custa 14, Inferno custa 8
+
+                    if(ammo >= custoAmmo && !isX1Active) {
+                        if(!b.el.querySelector('.dragon-ui')) {
+                            let dUI = document.createElement('div'); dUI.className = 'dragon-ui';
+                            // Mostra a dica "/max" direto na bolinha do jogador!
+                            dUI.innerHTML = `<img src="assets_jogo/imagens/special_power_icon.webp"><span class="dragon-time" style="font-size: 14px;">/max</span>`;
+                            b.el.querySelector('.follower-ball').appendChild(dUI);
+                        }
+                    } else {
+                        let dui = b.el.querySelector('.dragon-ui'); if(dui) dui.remove();
+                    }
+                }
+            });
+
+            // 💀 Dano por Inatividade (Se ficar 1 minuto sem interagir, perde 20% da vida)
+            let now = Date.now();
+            balls.forEach(b => {
+                if (!b.isBot && (now - b.lastActiveTs > 60000)) {
+                    b.takeDamage(vidaPadrao * 0.05, null);
+                    b.lastActiveTs = now; // Reseta para não tomar hit duplo seguido
+                }
+            });
+
+            // ⚔️ Relógio da Jaula X1
+            if(isX1Active) {
+                x1TimeLeft--;
+                let x1TimerEl = document.getElementById('x1-timer');
+                if(x1TimerEl) x1TimerEl.innerText = x1TimeLeft;
+                if(x1TimeLeft <= 0) finalizarX1(null, true);
+                return;
+            }
+
+            // ⏱️ Relógio Principal da Arena
+            timeLeft--;
+            if(timeLeft < 0) timeLeft = 0;
+            document.getElementById("timer").innerText = Math.floor(timeLeft/60)+":"+String(timeLeft%60).padStart(2,'0');
+
+            // 🏆 FIM DE PARTIDA (PÓDIO)
+            if(timeLeft <= 0) finalizarPartida();
+        }, 1000);
+
+        function finalizarPartida() {
+            gameActive = false;
+
+            // Separa os jogadores reais (ignora bots no pódio) e ordena por quem matou mais
+            let realPlayers = balls.filter(b => !b.isBot);
+            let sorted = realPlayers.sort((a,b) => b.kills - a.kills);
+
+            document.getElementById('winner-screen').style.display = 'flex';
+            let podiumHTML = '';
+
+            if(sorted[1] && sorted[1].kills > 0) { podiumHTML += `<div class="podium-item p2"><img src="${sorted[1].pic}"><div class="podium-name">🥈 ${sorted[1].id}</div><div class="podium-kills">⚔️ ${sorted[1].kills} Kills</div></div>`; }
+            if(sorted[0] && sorted[0].kills > 0) { podiumHTML += `<div class="podium-item p1"><div class="crown">👑</div><img src="${sorted[0].pic}"><div class="podium-name">${sorted[0].id}</div><div class="podium-kills">⚔️ ${sorted[0].kills} Kills</div></div>`; }
+            if(sorted[2] && sorted[2].kills > 0) { podiumHTML += `<div class="podium-item p3"><img src="${sorted[2].pic}"><div class="podium-name">🥉 ${sorted[2].id}</div><div class="podium-kills">⚔️ ${sorted[2].kills} Kills</div></div>`; }
+
+            if(podiumHTML === '') podiumHTML = '<h2 style="color:#aaa; font-size:30px;">Nenhum Abate Registrado 🏳️</h2>';
+            document.getElementById('podium').innerHTML = podiumHTML;
+
+            // 🔄 Lógica do Restart Automático do Painel
+            let autoRestartEnabled = false; let autoRestartTime = 10;
+            let cfgStr = localStorage.getItem('hostConfig');
+            if (cfgStr) { let cfg = JSON.parse(cfgStr); autoRestartEnabled = cfg.autoRestart; autoRestartTime = cfg.restartTime || 10; }
+
+            if(autoRestartEnabled) {
+                let msgEl = document.getElementById('auto-restart-msg');
+                if(!msgEl) {
+                    msgEl = document.createElement('p'); msgEl.id = 'auto-restart-msg';
+                    msgEl.style.cssText = "margin-top: 20px; font-size: 16px; color: #888;";
+                    document.getElementById('winner-screen').appendChild(msgEl);
+                }
+                msgEl.style.display = 'block';
+                let timeToRestart = autoRestartTime;
+
+                if(window.autoRestartTimer) clearInterval(window.autoRestartTimer);
+                window.autoRestartTimer = setInterval(() => {
+                    msgEl.innerHTML = `Reiniciando automaticamente em <span style="color:#fff; font-weight:bold;">${timeToRestart}s</span>...`;
+                    timeToRestart--;
+                    if(timeToRestart <= 0) { clearInterval(window.autoRestartTimer); reiniciarTudo(); }
+                }, 1000);
+            }
+        }
+        // 📥 PROCESSADOR DE FILA: TRADUÇÃO EXATA DO TIKFINITY
+        window.giftCombos = window.giftCombos || {};
+
+        setInterval(() => {
+            while (window.filaPresentes && window.filaPresentes.length > 0) {
+                let data = window.filaPresentes.shift(); let userId = data.data.nickname.trim();
+                let ball = balls.find(b => b.id === userId); if (!ball) continue;
+                let giftName = (data.data.giftName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+
+                let comboKey = userId + "_" + giftName;
+                let lastProcessado = window.giftCombos[comboKey] || 0;
+
+                // 🕵️ O TRADUTOR CORRETO: Lê o "repeatCount" do TikFinity, se não achar, tenta os nativos.
+                let totalDoCombo = parseInt(data.data.repeatCount || (data.data.gift && data.data.gift.repeat_count) || data.data.giftCount || 1);
+
+                // 💎 PUXANDO AS MOEDAS COM FORÇA BRUTA
+                let moedasDoPresente = parseInt(data.data.diamondCount || (data.data.gift && data.data.gift.diamond_count) || 0);
+
+                // 🚨 IDENTIFICAÇÃO DUPLA (Proteção máxima)
+                let isComboGift = (data.data.giftType === 1 || (data.data.gift && data.data.gift.gift_type === 1));
+                let isPresenteCaro = (moedasDoPresente >= 99); // 💰 A SUA REGRA AQUI: 99 moedas ou mais!
+
+                // 🏁 FINALIZA NA HORA SE: Não for tipo combo, OU se for 99+ moedas, OU se o dedo parar.
+                let comboFinalizado = (!isComboGift || isPresenteCaro || data.data.repeatEnd === true || (data.data.gift && data.data.gift.repeat_end === 1));
+
+                let presentesNovosDaVez = 0;
+
+                // 🧠 LÓGICA DE ESPERA ATIVA (Zero travas de tempo)
+                if (lastProcessado === 0) {
+                    if (comboFinalizado) {
+                        // Cenário A: Mandou só 1 presente e parou, presente caro, ou pacote fechado direto.
+                        presentesNovosDaVez = totalDoCombo;
+                    } else {
+                        // Cenário B: Iniciou um combo de cliques! Libera só 1 e anota.
+                        presentesNovosDaVez = 1;
+                        window.giftCombos[comboKey] = 1;
+                    }
+                }
+                else if (comboFinalizado) {
+                    // Cenário C: O combo finalizou! Pega o total e desconta o 1 que já liberamos.
+                    if (totalDoCombo > lastProcessado) {
+                        presentesNovosDaVez = totalDoCombo - lastProcessado;
+                    }
+                    delete window.giftCombos[comboKey];
+                }
+                else {
+                    // Cenário D: O combo tá rolando. Ignora e aguarda o final!
+                    presentesNovosDaVez = 0;
+                }
+
+                if (presentesNovosDaVez <= 0) continue;
+
+                // 💰 1º PASSO: CAIXA REGISTRADORA (Usa a leitura bruta de moedas e avisa na tela)
+                let moedasGanhas = (moedasDoPresente * presentesNovosDaVez);
+                if (moedasGanhas > 0) {
+                    ball.coins += moedasGanhas;
+                    floatingTexts.push(new FloatingText(ball.x + 50, ball.y, `🪙 +${moedasGanhas}`, "#FFD700"));
+                }
+                ball.checkUpgrades();
+
+                // 🛒 2º PASSO: DISTRIBUIÇÃO DOS PODERES E ESCUDO
+                if (mapaPresentesAtivos.x1 && mapaPresentesAtivos.x1.includes(giftName)) {
+                    window.saldoTicketsX1[userId] = (window.saldoTicketsX1[userId] || 0) + presentesNovosDaVez;
+                    localStorage.setItem('x1_balances', JSON.stringify(window.saldoTicketsX1));
+                    floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "🎫 +TICKET X1!", "#b200ff"));
+                    atualizarPainel();
+                }
+                else if (mapaPresentesAtivos.cure && mapaPresentesAtivos.cure.includes(giftName)) {
+                    ball.clearActiveStatus(); ball.hp = Math.min(vidaPadrao, ball.hp + (vidaPadrao * 0.5));
+                    if(ball.hpFillEl) ball.hpFillEl.style.setProperty('--hp', Math.max(0, (ball.hp/vidaPadrao)*100) + '%');
+                    floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "💚 CURA +50%!", "#0f0"));
+                }
+                else if (mapaPresentesAtivos.shield && mapaPresentesAtivos.shield.includes(giftName)) {
+                    // Cada presente enviado sobe +1 Nível direto no escudo, sem travas de relógio!
+                    ball.shieldLevel += presentesNovosDaVez;
+                    let sColor = POWER_ASSETS[ball.powerTier] ? POWER_ASSETS[ball.powerTier].color : "#fff";
+                    floatingTexts.push(new FloatingText(ball.x + 50, ball.y, `🛡️ ESCUDO LV.${ball.shieldLevel}!`, sColor));
+                }
+                else if (mapaPresentesAtivos.power && mapaPresentesAtivos.power.includes(giftName)) {
+                    if (ball.powerLvl >= 1) {
+                        window.chargedPowers[userId] = (window.chargedPowers[userId] || 0) + presentesNovosDaVez;
+                        localStorage.setItem('charged_powers', JSON.stringify(window.chargedPowers));
+                        floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "⚡ PODER CARREGADO!", "#0ff"));
+                        atualizarPainel();
+                    } else {
+                        floatingTexts.push(new FloatingText(ball.x + 50, ball.y, "❌ REQUER SERRA LVL 1", "#ff3300"));
+                    }
+                }
+            }
+        }, 300);
+
+        // 📊 GERENCIADOR DO PAINEL DE STATUS SOB DEMANDA
+        let statusTimeout = null;
+        function mostrarStatusOverlay() {
+            let overlay = document.getElementById('status-overlay');
+            let list = document.getElementById('status-list');
+            if(!overlay || !list) return;
+
+            let playersComTickets = balls.filter(b => (window.saldoTicketsX1[b.id] || 0) > 0 || (window.chargedPowers[b.id] || 0) > 0);
+
+            if (playersComTickets.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #aaa; font-weight: bold;">Nenhum ticket comprado ainda...</div>';
+            } else {
+                // Ordena por quem tem mais tickets X1, depois munições
+                playersComTickets.sort((a,b) => ((window.saldoTicketsX1[b.id]||0) - (window.saldoTicketsX1[a.id]||0)));
+                let htmlText = '';
+                playersComTickets.forEach(b => {
+                    let x1 = window.saldoTicketsX1[b.id] || 0;
+                    let pwr = window.chargedPowers[b.id] || 0;
+                    // O "break-inside: avoid" impede a carta de rachar ao meio entre as duas colunas!
+                    htmlText += `<div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 12px 20px; border-radius: 12px; border: 1px solid #555; margin-bottom: 15px; break-inside: avoid; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <img src="${b.pic}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #fff;">
+                            <b style="color: #0ff; font-size: 24px;">${b.id.substring(0,12)}</b>
+                        </div>
+                        <div style="font-weight: bold; font-size: 28px; text-shadow: 0 0 8px #000;">
+                            🎫 <span style="color: #b200ff; margin-right: 20px;">${x1}</span>
+                            ⚡ <span style="color: #FFD700;">${pwr}</span>
+                        </div>
+                    </div>`;
+                });
+                list.innerHTML = htmlText;
+            }
+
+            overlay.style.display = 'block';
+
+            // Auto-desliga após 5 segundos!
+            if (statusTimeout) clearTimeout(statusTimeout);
+            statusTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 5000);
+        }
+
+        // Adicionando o "Ouvinte" para o comando do botão do Host
+        setInterval(() => {
+            let cmdStatus = localStorage.getItem('cmdShowStatus');
+            if(cmdStatus && cmdStatus > (window.lastStatusTs || 0)) {
+                window.lastStatusTs = cmdStatus;
+                mostrarStatusOverlay();
+            }
+        }, 500);
+
+        update();
+        // ⚔️ SISTEMA COMPLETO DE GERENCIAMENTO DE DUELOS X1 INJETADO
+        function iniciarX1(p1, p2) {
+            if (isX1Active) return;
+            let ballA = (typeof p1 === 'string') ? balls.find(b => b.id === p1) : p1;
+            let ballB = (typeof p2 === 'string') ? balls.find(b => b.id === p2) : p2;
+            if (!ballA || !ballB) return;
+            if (ballA.teamId && ballA.teamId === ballB.teamId) { floatingTexts.push(new FloatingText(ballA.x, ballA.y, "❌ MESMO TIME!", "#ff0000")); return; }
+
+            isX1Active = true;
+            document.getElementById('x1-overlay').style.display = 'flex';
+
+            let tX1 = 60; window.vidaPadraoAntiga = vidaPadrao; let vX1 = 200;
+            let cfgStr = localStorage.getItem('hostConfig');
+            if(cfgStr) { let cfg = JSON.parse(cfgStr); tX1 = cfg.tempoX1 || 60; vX1 = cfg.vidaX1 || 200; }
+            x1TimeLeft = tX1; vidaPadrao = vX1;
+
+            ballA.clearActiveStatus(); ballB.clearActiveStatus();
+            ballA.hp = vX1; ballB.hp = vX1;
+            if(ballA.hpFillEl) ballA.hpFillEl.style.setProperty('--hp', '100%');
+            if(ballB.hpFillEl) ballB.hpFillEl.style.setProperty('--hp', '100%');
+
+            // Posiciona os dois frente a frente no Octógono (800x500)
+            ballA.x = 120; ballA.y = 200; ballA.vx = 5; ballA.vy = 3;
+            ballB.x = 580; ballB.y = 200; ballB.vx = -5; ballB.vy = -3;
+
+            let x1ArenaEl = document.getElementById('x1-arena');
+            if(x1ArenaEl) { x1ArenaEl.appendChild(ballA.el); x1ArenaEl.appendChild(ballB.el); }
+            x1Fighters = [ballA, ballB];
+
+            if(music) music.pause();
+            let x1M = document.getElementById("x1Music");
+            if(x1M && cfgStr && JSON.parse(cfgStr).musica) { x1M.currentTime = 0; x1M.play().catch(()=>{}); }
+        }
+
+        function atualizarFisicaX1() {
+            if (x1Fighters.length < 2) return;
+            let ball = x1Fighters[0]; let o = x1Fighters[1];
+            if (ball.hp <= 0) { finalizarX1(o, false); return; }
+            if (o.hp <= 0) { finalizarX1(ball, false); return; }
+
+
+            // 🧼 ADRENALINA para as bolinhas no octógono
+            let realSpeed = window.globalSpeedMult; // Salva a velocidade normal
+            window.globalSpeedMult = realSpeed * 1.5; // 🚀 DEIXA O X1 50% MAIS RÁPIDO
+
+            ball.updatePhysics(); o.updatePhysics();
+
+            window.globalSpeedMult = realSpeed; // Devolve a velocidade normal pro resto da arena
+
+            // 🛑 FÍSICA DO OCTÓGONO (Bater nas paredes diagonais)
+            [ball, o].forEach(b => {
+                let r = 50 * b.scale; let cx = b.x + r; let cy = b.y + r;
+                let bump = 6; // Força do tranco pra fora da parede diagonal
+
+                // Canto Superior Esquerdo
+                if (cy < -0.625 * cx + 125 + r) { b.x += bump; b.y += bump; b.vx = Math.abs(b.vx); b.vy = Math.abs(b.vy); }
+                // Canto Superior Direito
+                if (cy < 0.625 * cx - 375 + r) { b.x -= bump; b.y += bump; b.vx = -Math.abs(b.vx); b.vy = Math.abs(b.vy); }
+                // Canto Inferior Esquerdo
+                if (cy > 0.625 * cx + 375 - r) { b.x += bump; b.y -= bump; b.vx = Math.abs(b.vx); b.vy = -Math.abs(b.vy); }
+                // Canto Inferior Direito
+                if (cy > -0.625 * cx + 875 - r) { b.x -= bump; b.y -= bump; b.vx = -Math.abs(b.vx); b.vy = -Math.abs(b.vy); }
+            });
+
+            // Colisão interna do X1
+
+            // Colisão interna do X1
+            let dx = (o.x + 50*o.scale) - (ball.x + 50*ball.scale);
+            let dy = (o.y + 50*o.scale) - (ball.y + 50*ball.scale);
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (isNaN(dist) || dist === 0) { dx = 1; dy = 1; dist = 1.414; }
+            let minDist = 85 * ball.scale + 85 * o.scale;
+
+            if(dist < minDist) {
+                let nx = dx/dist; let ny = dy/dist; let overlap = minDist - dist;
+
+                // 🏋️ MASSA EXPONENCIAL: O mais forte pesa absurdamente mais (Lvl 8 = força 81, Lvl 1 = força 4)
+                let forcaA = Math.pow(1 + ball.powerLvl, 2);
+                let forcaB = Math.pow(1 + o.powerLvl, 2);
+                let somaForca = forcaA + forcaB;
+
+                let recuoA = forcaB / somaForca; let recuoB = forcaA / somaForca;
+                let deslizeX = (Math.random() - 0.5) * 0.6; let deslizeY = (Math.random() - 0.5) * 0.6;
+
+                // 💥 REPULSÃO AGRESSIVA: Multiplicador 1.8x para jogá-los longe no impacto
+                let boostRepulsao = 1.8;
+                ball.x -= (nx + deslizeX) * (overlap * recuoA * boostRepulsao);
+                ball.y -= (ny + deslizeY) * (overlap * recuoA * boostRepulsao);
+                o.x += (nx - deslizeX) * (overlap * recuoB * boostRepulsao);
+                o.y += (ny - deslizeY) * (overlap * recuoB * boostRepulsao);
+
+                // ☄️ TRANSFERÊNCIA DE ELASTICIDADE: O tranco na velocidade passa de 0.8 para 1.5 (Pancada seca)
+                let p = 1.5 * (ball.vx*nx + ball.vy*ny - o.vx*nx - o.vy*ny) / somaForca;
+                ball.vx -= p * forcaB * nx; ball.vy -= p * forcaB * ny;
+                o.vx += p * forcaA * nx; o.vy += p * forcaA * ny;
+
+                triggerHitEffect(ball, o, ball.x + 50*ball.scale + nx*(minDist/2), ball.y + 50*ball.scale + ny*(minDist/2));
+
+                let rankA = ball.powerTier || 1; let rankB = o.powerTier || 1;
+
+                let diff = rankA - rankB;
+
+                // ⚔️ DANO FÍSICO HIERÁRQUICO NA JAULA (Pancadaria Pesada x10)
+                if (diff > 0) {
+                    o.takeDamage(vidaPadrao * (0.04 * diff), ball.id);
+                } else if (diff < 0) {
+                    ball.takeDamage(vidaPadrao * (0.04 * Math.abs(diff)), o.id);
+                } else {
+                    // X1 de gigantes tem um dano base muito mais brutal
+                    let danoMesmoNivelX1 = vidaPadrao * (0.02 + (rankA * 0.005));
+                    ball.takeDamage(danoMesmoNivelX1, o.id);
+                    o.takeDamage(danoMesmoNivelX1, ball.id);
+                }
+            }
+        }
+
+        function finalizarX1(vencedor, porTempo) {
+            isX1Active = false;
+            document.getElementById('x1-overlay').style.display = 'none';
+            vidaPadrao = window.vidaPadraoAntiga || 100;
+
+            let x1M = document.getElementById("x1Music"); if(x1M) x1M.pause();
+            if(music && localStorage.getItem('hostConfig') && JSON.parse(localStorage.getItem('hostConfig')).musica) { music.play().catch(()=>{}); }
+
+            if (porTempo && x1Fighters.length === 2) {
+                if (x1Fighters[0].hp > x1Fighters[1].hp) vencedor = x1Fighters[0];
+                else if (x1Fighters[1].hp > x1Fighters[0].hp) vencedor = x1Fighters[1];
+                else vencedor = x1Fighters[Math.floor(Math.random()*2)];
+            }
+
+            let resultEl = document.getElementById('x1-result');
+            if (resultEl && x1Fighters.length === 2) {
+                let p1 = x1Fighters[0]; let p2 = x1Fighters[1];
+                let w = vencedor; let l = (w === p1) ? p2 : p1;
+
+                if (w && !w.isBot) localStorage.setItem('registerX1Win', w.id + '_' + Date.now());
+
+                // 💀 EXORCISMO DO FANTASMA: Zera a vida do perdedor ANTES de matar, pra ele não voltar!
+                if (l && l.hp > 0) { l.hp = 0; l.die(w ? w.id : null); }
+
+                // 🔄 DEVOLVE O VENCEDOR IMEDIATAMENTE: Evita que o vencedor fique invisível por 4 segundos
+                x1Fighters.forEach(f => {
+                    if (f && f.hp > 0 && balls.includes(f)) {
+                        f.hp = vidaPadrao; if(f.hpFillEl) f.hpFillEl.style.setProperty('--hp', '100%');
+                        document.getElementById('arena').appendChild(f.el);
+                    }
+                });
+
+                resultEl.style.display = 'flex';
+                resultEl.innerHTML = `
+                    <div class="x1-result-card x1-result-winner">
+                        <div class="x1-result-status" style="color:gold; font-weight:bold;">👑 VENCEDOR DO X1</div>
+                        <img src="${w.pic}">
+                        <div class="x1-result-name">${w.id}</div>
+                    </div>
+                    <div class="x1-result-card x1-result-loser">
+                        <div class="x1-result-status" style="color:#ff3300;">💀 DERROTADO</div>
+                        <img src="${l.pic}">
+                        <div class="x1-result-name">${l.id}</div>
+                    </div>`;
+
+                setTimeout(() => {
+                    resultEl.style.display = 'none';
+                    x1Fighters = []; // Limpa a jaula com segurança
+                }, 4000);
+            } else {
+                x1Fighters = [];
+            }
+        }
+
+        function triggerFinalJudgment(angel) {
+            if(window.isFinalJudgmentActive) return;
+            window.isFinalJudgmentActive = true;
+
+            // 1. Clarão Branco nas bordas
+            let flash = document.createElement('div');
+            flash.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; box-shadow: inset 0 0 150px 50px #fff; z-index: 8000; pointer-events:none; background: rgba(255,255,255,0.4);';
+            document.body.appendChild(flash);
+
+            // 2. Imagem Divina do Anjo
+            let img = document.createElement('img');
+            img.src = 'assets_jogo/imagens/angelicalfinal.webp';
+            img.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); height:85vh; z-index: 10; filter: drop-shadow(0 0 30px #ffcc00);';
+            document.getElementById('arena').appendChild(img);
+
+            // 3. Letreiro Épico
+            let txt = document.createElement('h1');
+            txt.innerText = 'JULGAMENTO FINAL';
+            txt.style.cssText = 'color:#ffcc00; font-size:70px; text-shadow: 0 0 30px #fff, 0 0 10px #000; font-family:"Arial Black"; position:absolute; top:5%; left:50%; transform:translateX(-50%); z-index: 8001; animation: pulsePlasma 0.2s infinite alternate;';
+            document.body.appendChild(txt);
+
+            if (musicStarted) { let sfx = new Audio('assets_jogo/audios/dragon_roar_sfx.mp3'); sfx.volume = window.globalVolSFX; sfx.play().catch(()=>{}); }
+
+            // Julgamento executado de forma balanceada após a sucção cósmica!
+            setTimeout(() => {
+                balls.forEach(b => {
+                    if (b.id !== angel.id && b.hp > 0 && (!angel.teamId || b.teamId !== angel.teamId)) {
+                        let targetTier = b.powerTier || 1;
+                        let diff = 12 - targetTier; // Anjo é Tier 12 permanente
+                        let dmgFactor = 0;
+
+                        if (diff >= 4) dmgFactor = 1.0;       // Hitkill geral em mortais fracos
+                        else if (diff === 3) dmgFactor = 0.60;
+                        else if (diff === 2) dmgFactor = 0.50;
+                        else if (diff === 1) dmgFactor = 0.40; // 🎯 Dá exatamente 40% na Inferno (Tier 11)!
+                        else dmgFactor = 0.20;
+
+                        if (dmgFactor >= 1.0) {
+                            b.die(angel.id);
+                        } else {
+                            b.takeDamage(vidaPadrao * dmgFactor, angel.id, true);
+                            floatingTexts.push(new FloatingText(b.x+50, b.y, `⚖️ JULGADO! -${Math.round(dmgFactor*100)}%`, "#ffcc00"));
+                        }
+                    }
+                });
+                flash.remove();
+                img.remove();
+                txt.remove();
+                window.isFinalJudgmentActive = false;
+            }, 3500);
+        }
+
+    </script>
+</body>
+</html>
