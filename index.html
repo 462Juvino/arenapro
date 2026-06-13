@@ -179,10 +179,6 @@
 
     <script>
         function toggleHud(idJanela) {
-            if (idJanela === 'janela-painel' && (window.rdmPerfil === 'gratuito' || window.rdmPerfil === 'plus')) {
-                alert("🔒 Painel Host / Narrador é exclusivo para planos PLUS PREMIUM e PRO!\nAdquira um plano na RDM Studio.");
-                return;
-            }
             let janela = document.getElementById(idJanela);
             let iframe = janela.querySelector('iframe');
 
