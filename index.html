@@ -151,7 +151,7 @@
     </div>
 
     <div id="hud-botoes">
-        <button class="hud-btn btn-pnl" onclick="toggleHud('janela-painel')">⚙️ Painel</button>
+        <button id="btn-pnl-host" class="hud-btn btn-pnl" onclick="toggleHud('janela-painel')">⚙️ Painel</button>
         <button class="hud-btn btn-rnk" onclick="toggleHud('janela-ranking')">🏆 Ranking</button>
     </div>
 
@@ -178,8 +178,11 @@
     </div>
 
     <script>
-        // 🪟 LÓGICA DE CONTROLE DAS JANELAS
         function toggleHud(idJanela) {
+            if (idJanela === 'janela-painel' && (window.rdmPerfil === 'gratuito' || window.rdmPerfil === 'plus')) {
+                alert("🔒 Painel Host / Narrador é exclusivo para planos PLUS PREMIUM e PRO!\nAdquira um plano na RDM Studio.");
+                return;
+            }
             let janela = document.getElementById(idJanela);
             let iframe = janela.querySelector('iframe');
 
@@ -223,6 +226,16 @@
 
     <script>
         if (localStorage.getItem('versao_arena') !== 'V11.5') { localStorage.clear(); localStorage.setItem('versao_arena', 'V11.5'); }
+
+        // 🛡️ TRAVA RDM STUDIO: Verifica a licença no momento que o jogo abre
+        window.rdmUser = localStorage.getItem('rdm_user');
+        window.rdmPerfil = localStorage.getItem('rdm_perfil');
+
+        if (!window.rdmUser || !window.rdmPerfil) {
+            document.body.innerHTML = "<div style='display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; background:#000;'><h1 style='color:#ef4444; text-shadow:0 0 20px #ef4444;'>ACESSO NEGADO</h1><p style='color:#ccc; font-size:20px;'>Você precisa estar logado na RDM Studio para jogar.</p></div>";
+            // Para o loop silenciosamente sem crashar a aba
+            window.stop();
+        }
 
         window.saldoTicketsX1 = JSON.parse(localStorage.getItem('x1_balances') || '{}');
         window.chargedPowers = JSON.parse(localStorage.getItem('charged_powers') || '{}');
@@ -310,18 +323,9 @@
             }
         }
 
-        // 🧠 A Mente Brilhante: Decide se usa o TikFinity do PC ou a Torre do Render!
         function verificarEConectar() {
-            let urlParams = new URLSearchParams(window.location.search);
-            let targetUser = urlParams.get('user');
-
-            if (!targetUser) {
-                let cfgStr = localStorage.getItem('hostConfig');
-                if (cfgStr) {
-                    let cfg = JSON.parse(cfgStr);
-                    if (cfg.tiktok_user) targetUser = cfg.tiktok_user;
-                }
-            }
+            // A API sempre vai mirar no dono da conta da RDM
+            let targetUser = window.rdmUser;
 
             if (!targetUser) {
                 if (conexaoNuvemEstabelecida && wsNuvem) {
@@ -1663,6 +1667,31 @@
 
         let timerInterval = setInterval(() => {
             if(!gameActive) return;
+
+            // ⏱️ CHECAGEM DE LICENÇA EM TEMPO REAL RDM
+            if (window.rdmPerfil === "gratuito" || window.rdmPerfil === "plus premium") {
+                let horaAtual = Date.now();
+                if (!window.rdmSessaoIniciada) window.rdmSessaoIniciada = horaAtual;
+
+                let tempoDecorridoMs = horaAtual - window.rdmSessaoIniciada;
+                let limiteMs = (window.rdmPerfil === "gratuito") ? (2 * 60 * 60 * 1000) : (42 * 60 * 60 * 1000);
+
+                if (tempoDecorridoMs >= limiteMs) {
+                    // Remove todos os jogadores suavemente
+                    balls.forEach(b => { if(b.el) b.el.remove(); });
+                    balls = [];
+                    // Exibe a tela de limite alcançado sem parar o motor gráfico do jogo
+                    let blockScreen = document.getElementById('rdm-block-screen');
+                    if (!blockScreen) {
+                        blockScreen = document.createElement('div');
+                        blockScreen.id = 'rdm-block-screen';
+                        blockScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.95); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center;';
+                        blockScreen.innerHTML = `<h1 style='color:#facc15; font-size:40px; text-shadow:0 0 20px #facc15;'>⏱️ TEMPO ESGOTADO!</h1><p style='color:white; font-size:20px;'>A carga de horas do seu plano atual chegou ao fim. Faça um upgrade no site RDM Studio.</p>`;
+                        document.body.appendChild(blockScreen);
+                        if (wsNuvem) wsNuvem.close(); // Corta a conexão com o Tikfinity/Nuvem para parar de puxar presentes!
+                    }
+                }
+            }
 
             // 🐉 ALERTA VISUAL DE ULTIMATE PRONTO (Manual via Chat)
             balls.forEach(b => {

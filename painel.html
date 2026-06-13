@@ -110,10 +110,8 @@
             </div>
         </details>
 
-        <div style="background: #111; padding: 15px; border-radius: 8px; border-left: 5px solid #00ffff; margin-bottom: 20px; border: 1px solid #333;">
-            <label style="color:#0ff; font-size: 16px;">🔗 Conectar API Direta (@ do TikTok):</label>
-            <input type="text" id="cfg-tiktok-user" placeholder="ex: mestre_da_arena" onchange="salvarConfiguracoes()" style="border: 1px solid #00ffff; font-size: 16px;">
-            <p style="font-size: 12px; color: #aaa; margin-top: 5px; margin-bottom: 0;">Se preenchido, o jogo usa a conexão nativa rápida e silencia o TikFinity.</p>
+        <div style="background: #111; padding: 15px; border-radius: 8px; border-left: 5px solid #00ffff; margin-bottom: 20px; border: 1px solid #333; display: none;">
+            <input type="hidden" id="cfg-tiktok-user">
         </div>
 
         <fieldset style="border: 1px solid #b200ff; border-radius: 8px; padding: 15px; margin-bottom: 20px; background: #222;">
@@ -368,8 +366,11 @@
                 let cureGift = document.getElementById('cfg-cure-gift').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
                 let shieldGift = document.getElementById('gift-shield').value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
 
+                // Puxa o @ direto da conta logada na RDM Studio
+                let rdmUser = localStorage.getItem('rdm_user') || "";
+
                 const config = {
-                    tiktok_user: document.getElementById('cfg-tiktok-user').value.trim(),
+                    tiktok_user: rdmUser,
                     tempo: parseInt(document.getElementById('cfg-tempo').value) || 300,
                     vidaMax: parseInt(document.getElementById('cfg-vida-max').value) || 3000,
                     tempoX1: parseInt(document.getElementById('cfg-tempo-x1').value) || 60,
