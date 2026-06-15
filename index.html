@@ -319,48 +319,23 @@
             }
         }
 
-        function verificarEConectar() {
-            // A API sempre vai mirar no dono da conta da RDM
+        function conectarNuvem() {
             let targetUser = window.rdmUser;
+            if (!targetUser) return;
 
-            if (!targetUser) {
-                if (conexaoNuvemEstabelecida && wsNuvem) {
-                    console.log("🔌 Nuvem desligada. Voltando pro PC...");
-                    wsNuvem.close();
-                }
-                if (!wsTikfinity || wsTikfinity.readyState !== WebSocket.OPEN) {
-                    wsTikfinity = new WebSocket("ws://127.0.0.1:21213/");
-                    wsTikfinity.onopen = () => { console.log("✅ TIKFINITY CONECTADO NO PC!"); };
-                    wsTikfinity.onmessage = (event) => {
-                        try {
-                            let d = JSON.parse(event.data);
-                            processarEventoDaAPI(d);
-                            repassarParaRanking(d); // Alimenta o Top 5 via PC!
-                        } catch(e) {}
-                    };
-                    wsTikfinity.onerror = () => { console.log("⚠️ TikFinity não encontrado no PC."); };
-                    wsTikfinity.onclose = () => { wsTikfinity = null; };
-                }
-                lastTiktokUser = "";
-                return;
-            }
-
-            targetUser = targetUser.replace('@', '').trim();
             if (conexaoNuvemEstabelecida && lastTiktokUser === targetUser) return;
 
             if (wsNuvem) wsNuvem.close();
-            if (wsTikfinity) { wsTikfinity.close(); wsTikfinity = null; }
 
             lastTiktokUser = targetUser;
-            console.log(`☁️ Conectando na Torre de Controle: @${targetUser}...`);
+            console.log(`☁️ Tentando Nuvem para: @${targetUser}...`);
 
             wsNuvem = new WebSocket("wss://torre-de-controle-rdm.onrender.com:443/");
 
             wsNuvem.onopen = () => {
                 conexaoNuvemEstabelecida = true;
                 console.log(`✅ NUVEM CONECTADA! Escutando @${targetUser}`);
-                wsNuvem.send(JSON.stringify({"action": "connect", "tiktok_user": targetUser}));
-                floatingTexts.push(new FloatingText(window.innerWidth/2, window.innerHeight/2, "☁️ NUVEM CONECTADA!", "#0f0"));
+                floatingTexts.push(new FloatingText(window.innerWidth/2, window.innerHeight/2, "☁️ NUVEM RDM CONECTADA!", "#0f0"));
             };
 
             wsNuvem.onmessage = (event) => {
@@ -371,15 +346,41 @@
                 } catch(e) {}
             };
 
-            wsNuvem.onerror = (e) => { console.log("⚠️ Falha ao conectar na nuvem."); };
-
-            wsNuvem.onclose = () => {
-                conexaoNuvemEstabelecida = false;
-                wsNuvem = null;
-            };
+            wsNuvem.onclose = () => { conexaoNuvemEstabelecida = false; wsNuvem = null; };
         }
 
-        // Verifica a cada 2 segundos se o Host digitou um @ no painel
+        function verificarEConectar() {
+            // Tenta priorizar o TikFinity Local!
+            if (!wsTikfinity || wsTikfinity.readyState === WebSocket.CLOSED) {
+                wsTikfinity = new WebSocket("ws://127.0.0.1:21213/");
+
+                wsTikfinity.onopen = () => {
+                    console.log("✅ TikFinity Local Conectado!");
+                    // Se o TikFinity conectou, desliga a Nuvem para não duplicar os presentes
+                    if (wsNuvem) { wsNuvem.close(); wsNuvem = null; conexaoNuvemEstabelecida = false; }
+                };
+
+                wsTikfinity.onmessage = (event) => {
+                    try {
+                        let d = JSON.parse(event.data);
+                        processarEventoDaAPI(d);
+                        repassarParaRanking(d); // Alimenta o Top 5 via PC!
+                    } catch(e) {}
+                };
+
+                wsTikfinity.onerror = () => {
+                    // Se o TikFinity der erro (ex: programa fechado), aciona a Nuvem com o @ do site
+                    conectarNuvem();
+                };
+
+                wsTikfinity.onclose = () => { wsTikfinity = null; };
+            } else if (wsTikfinity.readyState === WebSocket.OPEN) {
+                // Se já estiver rodando pelo TikFinity, garante que a Nuvem fique desligada
+                if (wsNuvem) { wsNuvem.close(); wsNuvem = null; conexaoNuvemEstabelecida = false; }
+            }
+        }
+
+        // A antena procura sinais a cada 2 segundos!
         setInterval(verificarEConectar, 2000);
 
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
