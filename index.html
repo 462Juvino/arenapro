@@ -327,8 +327,7 @@
             // 1. Se já está conectado e escutando a pessoa certa, não faz nada
             if (conexaoNuvemEstabelecida && lastTiktokUser === targetUser) return;
 
-            // 2. A CORREÇÃO MÁGICA: Se a Nuvem estiver "CONNECTING" (status 0),
-            // significa que o servidor está acordando. O jogo deve ESPERAR e não abortar!
+            // 2. A CORREÇÃO DE LOOP (Trava de Paciência): Se a Nuvem estiver conectando, ESPERE!
             if (wsNuvem && wsNuvem.readyState === WebSocket.CONNECTING) {
                 return;
             }
@@ -344,7 +343,10 @@
                 conexaoNuvemEstabelecida = true;
                 console.log(`✅ NUVEM CONECTADA! Escutando: @${targetUser}`);
 
-                // 3. A PROVA VISUAL: Escreve na tela do jogo o @ que ele puxou do banco de dados!
+                // 3. 🪄 A LINHA MÁGICA: Avisa a Torre de Controle qual Live ela deve espelhar agora!
+                wsNuvem.send(JSON.stringify({ action: "connect", tiktok_user: targetUser }));
+
+                // 4. A PROVA VISUAL: Escreve na tela do jogo o @ que ele puxou do banco de dados!
                 floatingTexts.push(new FloatingText(window.innerWidth/2, window.innerHeight/2, `☁️ NUVEM RDM LIGADA! (@${targetUser})`, "#0f0"));
             };
 
