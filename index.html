@@ -224,7 +224,8 @@
         if (localStorage.getItem('versao_arena') !== 'V11.5') { localStorage.clear(); localStorage.setItem('versao_arena', 'V11.5'); }
 
         // 🛡️ TRAVA RDM STUDIO: Verifica a licença no momento que o jogo abre
-        window.rdmUser = localStorage.getItem('rdm_user');
+        // Puxa primeiro a versão com PONTO, se não achar, usa a antiga por segurança
+        window.rdmUser = localStorage.getItem('rdm_user_tiktok') || localStorage.getItem('rdm_user');
         window.rdmPerfil = localStorage.getItem('rdm_perfil');
 
         if (!window.rdmUser || !window.rdmPerfil) {
